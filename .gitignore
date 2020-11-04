@@ -2,3 +2,4 @@ getbeaconbeststatedetail.json
 *.pem
 *.db
 *.old
+src/cmd/incognito_node_bot/incognito_node_bot
