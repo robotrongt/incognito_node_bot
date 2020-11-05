@@ -76,6 +76,11 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 	bbsd := models.BBSD{}
 	log.Println("Ricevuto:", body.Message.Text)
 	switch {
+	case strings.Contains(strings.ToLower(body.Message.Text), "/start"):
+		if err := env.sayText(body.Message.Chat.ID, "Ciao "+ChatData.Name+" come ti chiami?"); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
 	case ChatData.NameAsked:
 		ChatData.Name = body.Message.Text
 		ChatData.NameAsked = false
@@ -83,11 +88,6 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			log.Println("error updating name:", err)
 		}
 		if err := env.sayText(body.Message.Chat.ID, "Ciao "+ChatData.Name+" ora mi ricordo di te!"); err != nil {
-			log.Println("error in sending reply:", err)
-			return
-		}
-	case strings.Contains(strings.ToLower(body.Message.Text), "/start"):
-		if err := env.sayText(body.Message.Chat.ID, "Ciao "+ChatData.Name+" come ti chiami?"); err != nil {
 			log.Println("error in sending reply:", err)
 			return
 		}
