@@ -69,53 +69,53 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 	// First, decode the JSON response body
 	body := &webhookReqBody{}
 	if err := json.NewDecoder(req.Body).Decode(body); err != nil {
-		fmt.Println("could not decode request body", err)
+		log.Println("could not decode request body", err)
 		return
 	}
 	ChatData, _ := env.db.GetUserByChatID(body.Message.Chat.ID)
 	bbsd := models.BBSD{}
-	fmt.Println("Ricevuto:", body.Message.Text)
+	log.Println("Ricevuto:", body.Message.Text)
 	switch {
 	case ChatData.NameAsked:
 		ChatData.Name = body.Message.Text
 		ChatData.NameAsked = false
 		if err := env.db.UpdateUser(ChatData); err != nil {
-			fmt.Println("error updating name:", err)
+			log.Println("error updating name:", err)
 		}
 		if err := env.sayText(body.Message.Chat.ID, "Ciao "+ChatData.Name+" ora mi ricordo di te!"); err != nil {
-			fmt.Println("error in sending reply:", err)
+			log.Println("error in sending reply:", err)
 			return
 		}
 	case strings.Contains(strings.ToLower(body.Message.Text), "/start"):
 		if err := env.sayText(body.Message.Chat.ID, "Ciao "+ChatData.Name+" come ti chiami?"); err != nil {
-			fmt.Println("error in sending reply:", err)
+			log.Println("error in sending reply:", err)
 			return
 		}
 	case strings.Contains(strings.ToLower(body.Message.Text), "fiona") || strings.Contains(strings.ToLower(body.Message.Text), "olindo"):
 		if err := env.sayText(body.Message.Chat.ID, env.db.GetFionaText()); err != nil {
-			fmt.Println("error in sending reply:", err)
+			log.Println("error in sending reply:", err)
 			return
 		}
 	case strings.Contains(strings.ToLower(body.Message.Text), "altezza"):
 		if err := models.GetBeaconBestStateDetail("http://95.217.164.210:9334", ChatData, &bbsd); err != nil {
-			fmt.Println("error getBeaconBestStateDetail:", err)
+			log.Println("error getBeaconBestStateDetail:", err)
 			return
 		}
 		messaggio := fmt.Sprintf("Ecco %s, al mio nodo risulta altezza: %d, epoca: %d", ChatData.Name, bbsd.Result.BeaconHeight, bbsd.Result.Epoch)
 		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
-			fmt.Println("error in sending reply:", err)
+			log.Println("error in sending reply:", err)
 			return
 		}
 	default:
 		if err := env.sayText(body.Message.Chat.ID, "prova a dire \"altezza\""); err != nil {
-			fmt.Println("error in sending reply:", err)
+			log.Println("error in sending reply:", err)
 			return
 		}
 
 	}
 
 	// log a confirmation message if the message is sent successfully
-	fmt.Printf("reply sent, chat id: %d\n", body.Message.Chat.ID)
+	log.Printf("reply sent, chat id: %d\n", body.Message.Chat.ID)
 }
 
 //The below code deals with the process of sending a response message
@@ -135,6 +135,7 @@ func (env *Env) sayText(chatID int64, text string) error {
 		ChatID: chatID,
 		Text:   text,
 	}
+	log.Printf("sayText: %s\n", text)
 	// Create the JSON body from the struct
 	reqBytes, err := json.Marshal(reqBody)
 	if err != nil {

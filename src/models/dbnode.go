@@ -2,8 +2,8 @@ package models
 
 import (
 	"database/sql"
-	"fmt"
 	_ "github.com/mattn/go-sqlite3"
+	"log"
 	"time"
 )
 
@@ -32,7 +32,7 @@ func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 
 	stmt, err := db.DB.Prepare("select Name, NameAsked from chatdata where ChatID = ?")
 	if err != nil {
-		fmt.Println("GetUserByChatID error:", err)
+		log.Println("GetUserByChatID error:", err)
 		return nil, err
 		//		log.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 		retVal.Name = name
 		retVal.NameAsked = nameasked
 	}
-	fmt.Println(retVal.Name, retVal.NameAsked)
+	log.Println(retVal.Name, retVal.NameAsked)
 
 	return retVal, err
 }
@@ -59,9 +59,10 @@ func (db *DBnode) CreatetUserByChatID(chatID int64) (*ChatUser, error) {
 		NameAsked: true,
 	}
 
+	log.Println("CreatetUserByChatID:", retVal.ChatID, retVal.Name, retVal.NameAsked)
 	stmt, err := db.DB.Prepare("insert into chatdata(ChatID, Name, NameAsked) values (?, ?, ?)")
 	if err != nil {
-		fmt.Println("CreatetUserByChatID error:", err)
+		log.Println("CreatetUserByChatID error:", err)
 		return nil, err
 		//		log.Fatal(err)
 	}
@@ -69,16 +70,17 @@ func (db *DBnode) CreatetUserByChatID(chatID int64) (*ChatUser, error) {
 
 	_, err = stmt.Exec(retVal.ChatID, retVal.Name, retVal.NameAsked)
 	if err != nil {
-		fmt.Println("CreatetUserByChatID error:", err)
+		log.Println("CreatetUserByChatID error:", err)
 	}
 
 	return &retVal, err
 }
 
 func (db *DBnode) UpdateUser(user *ChatUser) error {
+	log.Println("UpdateUser:", user.ChatID, user.Name, user.NameAsked)
 	stmt, err := db.DB.Prepare("UPDATE chatdata SET Name = ?, NameAsked = ? WHERE ChatID = ?")
 	if err != nil {
-		fmt.Println("UpdateUser error:", err)
+		log.Println("UpdateUser error:", err)
 		return err
 		//		log.Fatal(err)
 	}
@@ -86,7 +88,7 @@ func (db *DBnode) UpdateUser(user *ChatUser) error {
 
 	_, err = stmt.Exec(user.Name, user.NameAsked, user.ChatID)
 	if err != nil {
-		fmt.Println("UpdateUser error:", err)
+		log.Println("UpdateUser error:", err)
 	}
 
 	return err
@@ -95,7 +97,7 @@ func (db *DBnode) UpdateUser(user *ChatUser) error {
 func (db *DBnode) GetUsersList(limit, offset int) (*[]ChatUser, error) {
 	stmt, err := db.DB.Prepare("SELECT ChatID, Name, NameAsked FROM chatdata LIMIT ? OFFSET ?")
 	if err != nil {
-		fmt.Println("GetUsersList error:", err)
+		log.Println("GetUsersList error:", err)
 		return nil, err
 	}
 	defer stmt.Close()
@@ -103,7 +105,7 @@ func (db *DBnode) GetUsersList(limit, offset int) (*[]ChatUser, error) {
 	rows := &sql.Rows{}
 	rows, err = stmt.Query(limit, offset)
 	if err != nil {
-		fmt.Println("GetUsersList error:", err)
+		log.Println("GetUsersList error:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -114,15 +116,15 @@ func (db *DBnode) GetUsersList(limit, offset int) (*[]ChatUser, error) {
 		var nameasked bool
 		err = rows.Scan(&chatid, &name, &nameasked)
 		if err != nil {
-			fmt.Println("GetUsersList error:", err)
+			log.Println("GetUsersList error:", err)
 			return nil, err
 		}
 
-		fmt.Println(chatid, name, nameasked)
+		log.Println(chatid, name, nameasked)
 		chatusers = append(chatusers, ChatUser{ChatID: chatid, Name: name, NameAsked: nameasked})
 	}
 	if err := rows.Err(); err != nil {
-		fmt.Println("GetUsersList error:", err)
+		log.Println("GetUsersList error:", err)
 		return nil, err
 	}
 
