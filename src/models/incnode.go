@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -79,8 +78,8 @@ func GetBeaconBestStateDetail(reqUrl string, user *ChatUser, bbsd *BBSD) error {
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 
 	getJson(myClient, req, &bbsd)
-	fmt.Printf("Result.BeaconHeight: %d\n", bbsd.Result.BeaconHeight)
-	fmt.Printf("Result.Epoch: %d\n", bbsd.Result.Epoch)
+	log.Printf("Result.BeaconHeight: %d\n", bbsd.Result.BeaconHeight)
+	log.Printf("Result.Epoch: %d\n", bbsd.Result.Epoch)
 	return err
 }
 
