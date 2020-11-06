@@ -203,9 +203,18 @@ func (db *DBnode) GetFionaText() string {
 }
 
 func (db *DBnode) CreateTablesIfNotExists() error {
-	/*
-	   CREATE TABLE IF NOT EXISTS "chatdata" ( "ChatID" integer NOT NULL, "Name" text, "NameAsked" INTEGER DEFAULT 1, PRIMARY KEY("ChatID") )
-	*/
-	_, err := db.DB.Exec(`CREATE TABLE IF NOT EXISTS "chatdata" ( "ChatID" integer NOT NULL, "Name" text, "NameAsked" INTEGER DEFAULT 1, PRIMARY KEY("ChatID") )`)
+	var create_statements = [...]string{
+		`CREATE TABLE IF NOT EXISTS "chatdata" ( "ChatID" integer NOT NULL, "Name" text, "NameAsked" INTEGER DEFAULT 1, PRIMARY KEY("ChatID") )`,
+		`CREATE TABLE IF NOT EXISTS "urlnodes" ( "UNId" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, "ChatID" INTEGER, "NodeName" TEXT, "NodeURL" TEXT )`,
+	}
+	var err error = nil
+	for _, statement := range create_statements {
+		log.Println(statement)
+		_, err = db.DB.Exec(statement)
+		if err != nil {
+			log.Println("CreateTablesIfNotExists error:", err)
+			return err
+		}
+	}
 	return err
 }

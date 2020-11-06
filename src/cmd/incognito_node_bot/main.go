@@ -18,6 +18,7 @@ type Env struct {
 	TOKEN    string
 	API      string
 	BOT_NAME string
+	BOT_CMDS map[string]string
 }
 
 func (env *Env) GetSendMessageUrl() string {
@@ -39,6 +40,13 @@ func main() {
 		TOKEN:    os.Getenv("TOKEN"),
 		API:      "https://api.telegram.org/bot",
 		BOT_NAME: "@incognito_node_bot",
+		BOT_CMDS: map[string]string{
+			"/start":   "inizializza il bot",
+			"/help":    "elenco comandi bot",
+			"/altezza": "`/altezza [nodo]` interroga il [nodo] per informazioni blockchain",
+			"/addnode": "`/addnode [nodo] [urlnodo]` salva o aggiorna url del tuo nodo",
+			"/delnode": "`/delnode [nodo]` elimina il tuo nodo",
+		},
 	}
 
 	err = env.db.CreateTablesIfNotExists()
@@ -49,6 +57,9 @@ func main() {
 	//	ChatData, _ := env.db.GetUserByChatID(1)
 	//	fmt.Printf("ChatData: %T", ChatData)
 	log.Println("SendMessageUrl: " + env.GetSendMessageUrl())
+	for cmd, descr := range env.BOT_CMDS {
+		log.Printf("cmd=\"%s\" descr=\"%s\"\n", cmd, descr)
+	}
 
 	http.ListenAndServeTLS(":8443", "cert.pem", "key.pem", http.HandlerFunc(env.Handler))
 }
@@ -76,7 +87,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 	bbsd := models.BBSD{}
 	log.Println("Ricevuto:", body.Message.Text)
 	switch {
-	case strings.Contains(strings.ToLower(body.Message.Text), "/start"):
+	case env.strCmd(body.Message.Text) == "/start":
 		ChatData.NameAsked = true
 		if err := env.db.UpdateUser(ChatData); err != nil {
 			log.Println("error updating name:", err)
@@ -100,7 +111,11 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			log.Println("error in sending reply:", err)
 			return
 		}
-	case strings.Contains(strings.ToLower(body.Message.Text), "altezza"):
+	case env.strCmd(body.Message.Text) == "/altezza":
+		params := strings.Fields(env.removeCmd(body.Message.Text))
+		np := len(params)
+		nodo := params[0]
+		log.Println("/altezza", nodo, np, params)
 		if err := models.GetBeaconBestStateDetail("http://95.217.164.210:9334", ChatData, &bbsd); err != nil {
 			log.Println("error getBeaconBestStateDetail:", err)
 			return
@@ -111,7 +126,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	default:
-		if err := env.sayText(body.Message.Chat.ID, "prova a dire \"altezza\""); err != nil {
+		if err := env.sayText(body.Message.Chat.ID, "prova a dire \"/altezza\""); err != nil {
 			log.Println("error in sending reply:", err)
 			return
 		}
@@ -120,6 +135,38 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 
 	// log a confirmation message if the message is sent successfully
 	log.Printf("reply sent, chat id: %d\n", body.Message.Chat.ID)
+}
+
+//ritorna il comando,se presente, e senza @nomebot tutto minuscolo. Altrimenti stringa vuota
+func (env *Env) strCmd(text string) string {
+	t := strings.ToLower(strings.TrimLeft(text, " "))
+	for cmd := range env.BOT_CMDS {
+		cmdbot := cmd + env.BOT_NAME
+		if strings.HasPrefix(t, cmdbot) || strings.HasPrefix(t, cmd) {
+			return cmd
+		}
+	}
+	return ""
+}
+
+//ritorna la stringa dopo aver rimosso il comando o comando@nomebot
+func (env *Env) removeCmd(text string) string {
+	txt := strings.TrimLeft(text, " ")
+	t := strings.ToLower(txt)
+	for cmd := range env.BOT_CMDS {
+		cmdbot := cmd + env.BOT_NAME
+		switch {
+		case strings.HasPrefix(t, cmdbot):
+			{
+				return strings.TrimLeft(txt[len(cmdbot):], " ")
+			}
+		case strings.HasPrefix(t, cmd):
+			{
+				return strings.TrimLeft(txt[len(cmd):], " ")
+			}
+		}
+	}
+	return txt
 }
 
 //The below code deals with the process of sending a response message
