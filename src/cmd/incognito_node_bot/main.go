@@ -114,7 +114,12 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 	case env.strCmd(body.Message.Text) == "/altezza":
 		params := strings.Fields(env.removeCmd(body.Message.Text))
 		np := len(params)
-		nodo := params[0]
+		nodo := ""
+		if np > 0 {
+			nodo = params[0]
+		} else {
+			nodo = "default"
+		}
 		log.Println("/altezza", nodo, np, params)
 		if err := models.GetBeaconBestStateDetail("http://95.217.164.210:9334", ChatData, &bbsd); err != nil {
 			log.Println("error getBeaconBestStateDetail:", err)
