@@ -77,6 +77,10 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 	log.Println("Ricevuto:", body.Message.Text)
 	switch {
 	case strings.Contains(strings.ToLower(body.Message.Text), "/start"):
+		ChatData.NameAsked = true
+		if err := env.db.UpdateUser(ChatData); err != nil {
+			log.Println("error updating name:", err)
+		}
 		if err := env.sayText(body.Message.Chat.ID, "Ciao "+ChatData.Name+" come ti chiami?"); err != nil {
 			log.Println("error in sending reply:", err)
 			return
