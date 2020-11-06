@@ -105,7 +105,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			log.Println("error getBeaconBestStateDetail:", err)
 			return
 		}
-		messaggio := fmt.Sprintf("Ecco %s, al mio nodo risulta altezza: %d, epoca: %d", ChatData.Name, bbsd.Result.BeaconHeight, bbsd.Result.Epoch)
+		messaggio := fmt.Sprintf("Ecco %s, al mio nodo risulta altezza: %d, epoca: %d/%d", ChatData.Name, bbsd.Result.BeaconHeight, bbsd.Result.Epoch, 350-(bbsd.Result.BeaconHeight%350))
 		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
 			return
