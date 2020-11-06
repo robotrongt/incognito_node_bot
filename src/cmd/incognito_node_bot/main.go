@@ -118,14 +118,18 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		if np > 0 {
 			nodo = params[0]
 		} else {
-			nodo = "default"
+			nodo = ""
 		}
 		log.Println("/altezza", nodo, np, params)
 		if err := models.GetBeaconBestStateDetail("http://95.217.164.210:9334", ChatData, &bbsd); err != nil {
 			log.Println("error getBeaconBestStateDetail:", err)
 			return
 		}
-		messaggio := fmt.Sprintf("Ecco %s, al mio nodo risulta altezza: %d, epoca: %d/%d", ChatData.Name, bbsd.Result.BeaconHeight, bbsd.Result.Epoch, 350-(bbsd.Result.BeaconHeight%350))
+		nodestring := "mio nodo"
+		if len(nodo) > 0 {
+			nodestring = fmt.Sprintf("nodo \"%s\"", nodo)
+		}
+		messaggio := fmt.Sprintf("Ecco %s, al %s risulta altezza: %d, epoca: %d/%d", ChatData.Name, nodestring, bbsd.Result.BeaconHeight, bbsd.Result.Epoch, 350-(bbsd.Result.BeaconHeight%350))
 		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
 			return
