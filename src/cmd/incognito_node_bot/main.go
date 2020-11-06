@@ -53,8 +53,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	//	ChatData, _ := env.db.GetUserByChatID(1)
+	/*
+		u, e := env.db.GetUrlNode(1, "pippo")
+		log.Println("env.db.GetUrlNode err:", e)
+		log.Println("env.db.GetUrlNode u:", u)
+		if e != nil {
+			u = &models.UrlNode{}
+		}
+		u.ChatID = 2
+		u.NodeName = "pippo2"
+		u.NodeURL = "pippurlx2"
+		e = env.db.UpdateUrlNode(u)
+		log.Println("env.db.UpdateUrlNode err:", e)
+	*/
 	//	fmt.Printf("ChatData: %T", ChatData)
 	log.Println("SendMessageUrl: " + env.GetSendMessageUrl())
 	for cmd, descr := range env.BOT_CMDS {
@@ -117,11 +128,13 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		nodo := ""
 		if np > 0 {
 			nodo = params[0]
-		} else {
-			nodo = ""
 		}
 		log.Println("/altezza", nodo, np, params)
-		if err := models.GetBeaconBestStateDetail("http://95.217.164.210:9334", ChatData, &bbsd); err != nil {
+		theUrl := "http://95.217.164.210:9334"
+		if urlNode, err := env.db.GetUrlNode(ChatData.ChatID, nodo); err == nil {
+			theUrl = urlNode.NodeURL
+		}
+		if err := models.GetBeaconBestStateDetail(theUrl, ChatData, &bbsd); err != nil {
 			log.Println("error getBeaconBestStateDetail:", err)
 			return
 		}
@@ -130,6 +143,34 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			nodestring = fmt.Sprintf("nodo \"%s\"", nodo)
 		}
 		messaggio := fmt.Sprintf("Ecco %s, al %s risulta altezza: %d, epoca: %d/%d", ChatData.Name, nodestring, bbsd.Result.BeaconHeight, bbsd.Result.Epoch, 350-(bbsd.Result.BeaconHeight%350))
+		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
+	case env.strCmd(body.Message.Text) == "/addnode":
+		params := strings.Fields(env.removeCmd(body.Message.Text))
+		np := len(params)
+		nodo := ""
+		urlnodo := ""
+		if np < 2 {
+			messaggio := fmt.Sprint("Problema sui parametri di addnode, servono [nome] [url]", len(params), params)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+				return
+			}
+		}
+		nodo = params[0]
+		urlnodo = params[1]
+		log.Println("/addnode", nodo, urlnodo, np, params)
+		err := env.db.UpdateUrlNode(&models.UrlNode{UNId: 0, ChatID: body.Message.Chat.ID, NodeName: nodo, NodeURL: urlnodo})
+		if err != nil {
+			messaggio := fmt.Sprint("Problema aggiornamento nodo", err)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+				return
+			}
+		}
+		messaggio := fmt.Sprint("Nodo aggiornato", nodo, urlnodo)
 		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
 			return

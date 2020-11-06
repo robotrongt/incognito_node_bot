@@ -26,6 +26,13 @@ type ChatUser struct {
 	NameAsked bool
 }
 
+type UrlNode struct {
+	UNId     int64
+	ChatID   int64
+	NodeName string
+	NodeURL  string
+}
+
 //Recupera un record utente o lo crea vuoto se non esiste
 func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 	retVal := &ChatUser{chatID, "", true}
@@ -41,7 +48,7 @@ func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 	var nameasked bool
 	err = stmt.QueryRow(chatID).Scan(&name, &nameasked)
 	if err != nil {
-		retVal, err = db.CreatetUserByChatID(chatID)
+		retVal, err = db.CreateUserByChatID(chatID)
 	} else {
 		retVal.Name = name
 		retVal.NameAsked = nameasked
@@ -52,17 +59,17 @@ func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 }
 
 //Crea un utente vuoto
-func (db *DBnode) CreatetUserByChatID(chatID int64) (*ChatUser, error) {
+func (db *DBnode) CreateUserByChatID(chatID int64) (*ChatUser, error) {
 	retVal := ChatUser{
 		ChatID:    chatID,
 		Name:      "Sconosciuto",
 		NameAsked: true,
 	}
 
-	log.Println("CreatetUserByChatID:", retVal.ChatID, retVal.Name, retVal.NameAsked)
+	log.Println("CreateUserByChatID:", retVal.ChatID, retVal.Name, retVal.NameAsked)
 	stmt, err := db.DB.Prepare("insert into chatdata(ChatID, Name, NameAsked) values (?, ?, ?)")
 	if err != nil {
-		log.Println("CreatetUserByChatID error:", err)
+		log.Println("CreateUserByChatID error:", err)
 		return nil, err
 		//		log.Fatal(err)
 	}
@@ -70,12 +77,13 @@ func (db *DBnode) CreatetUserByChatID(chatID int64) (*ChatUser, error) {
 
 	_, err = stmt.Exec(retVal.ChatID, retVal.Name, retVal.NameAsked)
 	if err != nil {
-		log.Println("CreatetUserByChatID error:", err)
+		log.Println("CreateUserByChatID error:", err)
 	}
 
 	return &retVal, err
 }
 
+//Aggiorna utente
 func (db *DBnode) UpdateUser(user *ChatUser) error {
 	log.Println("UpdateUser:", user.ChatID, user.Name, user.NameAsked)
 	stmt, err := db.DB.Prepare("UPDATE chatdata SET Name = ?, NameAsked = ? WHERE ChatID = ?")
@@ -94,6 +102,7 @@ func (db *DBnode) UpdateUser(user *ChatUser) error {
 	return err
 }
 
+//Recupera lista utenti
 func (db *DBnode) GetUsersList(limit, offset int) (*[]ChatUser, error) {
 	stmt, err := db.DB.Prepare("SELECT ChatID, Name, NameAsked FROM chatdata LIMIT ? OFFSET ?")
 	if err != nil {
@@ -129,6 +138,106 @@ func (db *DBnode) GetUsersList(limit, offset int) (*[]ChatUser, error) {
 	}
 
 	return &chatusers, err
+}
+
+//Recupera un Nodo della Chat
+func (db *DBnode) GetUrlNode(chatID int64, NodeName string) (*UrlNode, error) {
+	log.Println("GetUrlNode:", chatID, NodeName)
+	retVal := &UrlNode{}
+
+	stmt, err := db.DB.Prepare("SELECT `UNId`, `ChatID`,`NodeName`,`NodeURL` FROM `urlnodes` where ChatID = ? AND NodeName = ?")
+	if err != nil {
+		log.Println("GetUrlNode error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+	err = stmt.QueryRow(chatID, NodeName).Scan(&retVal.UNId, &retVal.ChatID, &retVal.NodeName, &retVal.NodeURL)
+	if err != nil {
+		log.Println("GetUrlNode error:", err)
+		return nil, err
+	} else {
+	}
+	log.Println("GetUrlNode: ", retVal.UNId, retVal.ChatID, retVal.NodeName, retVal.NodeURL)
+
+	return retVal, err
+}
+
+//Aggiorna/crea UrlNode con chiave `ChatID`+`NodeName`
+func (db *DBnode) UpdateUrlNode(urlnode *UrlNode) error {
+	log.Println("UpdateUrlNode:", urlnode.UNId, urlnode.ChatID, urlnode.NodeName, urlnode.NodeURL)
+	u, e := db.GetUrlNode(urlnode.ChatID, urlnode.NodeName)
+	if e != nil {
+		u = &UrlNode{}
+	}
+	u.ChatID = urlnode.ChatID
+	u.NodeName = urlnode.NodeName
+	u.NodeURL = urlnode.NodeURL
+	if e != nil { //il record non c'era, lo inseriamo
+		stmt, err := db.DB.Prepare("INSERT INTO `urlnodes`(`ChatID`,`NodeName`,`NodeURL`) VALUES (?,?,?)")
+		if err != nil {
+			log.Println("UpdateUrlNode error:", err)
+			return err
+		}
+		defer stmt.Close()
+
+		_, err = stmt.Exec(u.ChatID, u.NodeName, u.NodeURL)
+		if err != nil {
+			log.Println("UpdateUrlNode error:", err)
+		}
+	} else { //il record era presente, lo aggiorniamo, la chiave non serve aggiornarla
+		stmt, err := db.DB.Prepare("UPDATE urlnodes SET NodeURL = ? WHERE UNId = ?")
+		if err != nil {
+			log.Println("UpdateUrlNode error:", err)
+			return err
+		}
+		defer stmt.Close()
+
+		_, err = stmt.Exec(u.NodeURL, u.UNId)
+		if err != nil {
+			log.Println("UpdateUrlNode error:", err)
+		}
+	}
+
+	return nil
+}
+
+//Recupera lista nodi per ChatID
+func (db *DBnode) GetUrlNodes(chatID int64, limit, offset int) (*[]UrlNode, error) {
+	stmt, err := db.DB.Prepare("SELECT `UNId`, `ChatID`,`NodeName`,`NodeURL` FROM `urlnodes` WHERE ChatID = ? LIMIT ? OFFSET ?")
+	if err != nil {
+		log.Println("GetUrlNodes error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := &sql.Rows{}
+	rows, err = stmt.Query(chatID, limit, offset)
+	if err != nil {
+		log.Println("GetUrlNodes error:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	var urlnodes []UrlNode
+	for rows.Next() {
+		var unid int64
+		var chatid int64
+		var nodename string
+		var nodeurl string
+		err = rows.Scan(&unid, &chatid, &nodename, &nodeurl)
+		if err != nil {
+			log.Println("GetUrlNodes error:", err)
+			return nil, err
+		}
+
+		log.Println(unid, chatid, nodename, nodeurl)
+		urlnodes = append(urlnodes, UrlNode{UNId: unid, ChatID: chatid, NodeName: nodename, NodeURL: nodeurl})
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("GetUrlNodes error:", err)
+		return nil, err
+	}
+
+	return &urlnodes, err
 }
 
 func (db *DBnode) GetFionaText() string {
