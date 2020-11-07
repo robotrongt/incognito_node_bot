@@ -137,6 +137,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		}
 		if err := models.GetBeaconBestStateDetail(theUrl, ChatData, &bbsd); err != nil {
 			log.Println("error getBeaconBestStateDetail:", err)
+			env.sayErr(body.Message.Chat.ID, err)
 			return
 		}
 		nodestring := "mio nodo"
@@ -257,7 +258,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	default:
-		if err := env.sayText(body.Message.Chat.ID, "prova a dire \"/altezza\""); err != nil {
+		if err := env.sayText(body.Message.Chat.ID, env.printBOT_CMDS()); err != nil {
 			log.Println("error in sending reply:", err)
 			return
 		}
@@ -338,4 +339,13 @@ func (env *Env) sayText(chatID int64, text string) error {
 func (env *Env) sayErr(chatID int64, err error) error {
 	text := fmt.Sprintf("%s", err)
 	return env.sayText(chatID, text)
+}
+
+func (env *Env) printBOT_CMDS() string {
+	text := "Prova questi comandi:"
+	for cmd, descr := range env.BOT_CMDS {
+		text = fmt.Sprintf("%s\n%s\t%s", text, cmd, descr)
+	}
+
+	return text
 }
