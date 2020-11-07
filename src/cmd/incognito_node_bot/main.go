@@ -190,6 +190,9 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			messaggio = fmt.Sprintf("%s\n%d)\t\"%s\"\t%s", messaggio, i+1, urlnodo.NodeName, urlnodo.NodeURL)
 		}
 		log.Printf("/listnodes invio %d nodi.", len(*listaNodi))
+		if messaggio == "" {
+			messaggio = "Non trovo nulla!"
+		}
 		if err = env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
 			return
