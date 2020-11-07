@@ -334,3 +334,8 @@ func (env *Env) sayText(chatID int64, text string) error {
 
 	return nil
 }
+
+func (env *Env) sayErr(chatID int64, err error) error {
+	text := fmt.Sprintf("%s", err)
+	return env.sayText(chatID, text)
+}
