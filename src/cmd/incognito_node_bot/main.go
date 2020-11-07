@@ -220,7 +220,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		var unid int64
-		nodo := ""
+		nodo := "not found"
 		if np > 0 {
 			for _, urlnodo := range *listaNodi {
 				if urlnodo.NodeName == params[0] {
@@ -233,6 +233,13 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			nodo = (*listaNodi)[0].NodeName
 		}
 		log.Println("/delnode UNId=", unid, " Nome=", nodo)
+		if nodo == "not found" {
+			messaggio := fmt.Sprint("Problema cancellando il nodo: ", nodo)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
 		err = env.db.DelNode(unid)
 		if err != nil {
 			messaggio := fmt.Sprint("Problema cancellando il nodo: ", err)
