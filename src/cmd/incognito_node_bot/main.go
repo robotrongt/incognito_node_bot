@@ -187,8 +187,61 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		}
 		messaggio := ""
 		for i, urlnodo := range *listaNodi {
-			messaggio = fmt.Sprintf("%s\n%d)\t\"%s\"\t%s\n", messaggio, i+1, urlnodo.NodeName, urlnodo.NodeURL)
+			messaggio = fmt.Sprintf("%s\n%d)\t\"%s\"\t%s", messaggio, i+1, urlnodo.NodeName, urlnodo.NodeURL)
 		}
+		log.Printf("/listnodes invio %d nodi.", len(*listaNodi))
+		if err = env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
+	case env.strCmd(body.Message.Text) == "/delnode":
+		listaNodi, err := env.db.GetUrlNodes(body.Message.Chat.ID, 100, 0)
+		if err != nil {
+			messaggio := fmt.Sprint("Problema recuperando i nodi: ", err)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+				return
+			}
+		}
+		if len(*listaNodi) == 0 {
+			messaggio := fmt.Sprintf("Mi spiace, non hai nodi.")
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+				return
+			}
+		}
+		params := strings.Fields(env.removeCmd(body.Message.Text))
+		np := len(params)
+		if len(*listaNodi) > 1 && np < 1 {
+			messaggio := fmt.Sprintf("Problema sui parametri di delnode, serve [nome] perché hai %d nodi. ", len(params))
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+				return
+			}
+		}
+		var unid int64
+		nodo := ""
+		if np > 0 {
+			for _, urlnodo := range *listaNodi {
+				if urlnodo.NodeName == params[0] {
+					unid = urlnodo.UNId
+					nodo = urlnodo.NodeName
+				}
+			}
+		} else {
+			unid = (*listaNodi)[0].UNId
+			nodo = (*listaNodi)[0].NodeName
+		}
+		log.Println("/delnode UNId=", unid, " Nome=", nodo)
+		err = env.db.DelNode(unid)
+		if err != nil {
+			messaggio := fmt.Sprint("Problema cancellando il nodo: ", err)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+				return
+			}
+		}
+		messaggio := fmt.Sprintf("Nodo %s (%d) eliminato.", nodo, unid)
 		if err = env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
 			return

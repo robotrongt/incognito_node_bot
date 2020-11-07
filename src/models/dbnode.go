@@ -240,6 +240,24 @@ func (db *DBnode) GetUrlNodes(chatID int64, limit, offset int) (*[]UrlNode, erro
 	return &urlnodes, err
 }
 
+//Elimina UrlNode con chiave `UNId`
+func (db *DBnode) DelNode(unid int64) error {
+	log.Println("DelNode:", unid)
+	stmt, err := db.DB.Prepare("DELETE FROM `urlnodes` WHERE `UNId` = ?")
+	if err != nil {
+		log.Println("DelNode error:", err)
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(unid)
+	if err != nil {
+		log.Println("DelNode error:", err)
+	}
+
+	return nil
+}
+
 func (db *DBnode) GetFionaText() string {
 	m := map[string]string{
 		"2020-11-01": "-53 (-36)",
