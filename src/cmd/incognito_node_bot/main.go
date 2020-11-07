@@ -41,11 +41,12 @@ func main() {
 		API:      "https://api.telegram.org/bot",
 		BOT_NAME: "@incognito_node_bot",
 		BOT_CMDS: map[string]string{
-			"/start":   "inizializza il bot",
-			"/help":    "elenco comandi bot",
-			"/altezza": "`/altezza [nodo]` interroga il [nodo] per informazioni blockchain",
-			"/addnode": "`/addnode [nodo] [urlnodo]` salva o aggiorna url del tuo nodo",
-			"/delnode": "`/delnode [nodo]` elimina il tuo nodo",
+			"/start":     "inizializza il bot",
+			"/help":      "elenco comandi bot",
+			"/altezza":   "`/altezza [nodo]` interroga il [nodo] per informazioni blockchain",
+			"/addnode":   "`/addnode [nodo] [urlnodo]` salva o aggiorna url del tuo nodo",
+			"/delnode":   "`/delnode [nodo]` elimina il tuo nodo",
+			"/listnodes": "`/listnodes` elenca i tuoi nodi",
 		},
 	}
 
@@ -153,7 +154,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		nodo := ""
 		urlnodo := ""
 		if np < 2 {
-			messaggio := fmt.Sprint("Problema sui parametri di addnode, servono [nome] [url]", len(params), params)
+			messaggio := fmt.Sprint("Problema sui parametri di addnode, servono [nome] [url] ", len(params), " ", params)
 			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 				log.Println("error in sending reply:", err)
 				return
@@ -164,14 +165,31 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		log.Println("/addnode", nodo, urlnodo, np, params)
 		err := env.db.UpdateUrlNode(&models.UrlNode{UNId: 0, ChatID: body.Message.Chat.ID, NodeName: nodo, NodeURL: urlnodo})
 		if err != nil {
-			messaggio := fmt.Sprint("Problema aggiornamento nodo", err)
+			messaggio := fmt.Sprint("Problema aggiornamento nodo: ", err)
 			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 				log.Println("error in sending reply:", err)
 				return
 			}
 		}
-		messaggio := fmt.Sprint("Nodo aggiornato", nodo, urlnodo)
+		messaggio := fmt.Sprint("Nodo aggiornato: \"", nodo, "\" ", urlnodo)
 		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
+	case env.strCmd(body.Message.Text) == "/listnodes":
+		listaNodi, err := env.db.GetUrlNodes(body.Message.Chat.ID, 100, 0)
+		if err != nil {
+			messaggio := fmt.Sprint("Problema recuperando i nodi: ", err)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+				return
+			}
+		}
+		messaggio := ""
+		for i, urlnodo := range *listaNodi {
+			messaggio = fmt.Sprintf("%s\n%d)\t\"%s\"\t%s\n", messaggio, i+1, urlnodo.NodeName, urlnodo.NodeURL)
+		}
+		if err = env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
 			return
 		}
