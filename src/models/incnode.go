@@ -75,9 +75,15 @@ func GetBeaconBestStateDetail(reqUrl string, user *ChatUser, bbsd *BBSD) error {
 		reqUrl,
 		reqBody,
 	)
+	if err != nil {
+		return err
+	}
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 
-	getJson(myClient, req, &bbsd)
+	err = getJson(myClient, req, &bbsd)
+	if err != nil {
+		return err
+	}
 	log.Printf("Result.BeaconHeight: %d\n", bbsd.Result.BeaconHeight)
 	log.Printf("Result.Epoch: %d\n", bbsd.Result.Epoch)
 	return err
@@ -86,7 +92,8 @@ func GetBeaconBestStateDetail(reqUrl string, user *ChatUser, bbsd *BBSD) error {
 func getJson(myClient *http.Client, req *http.Request, target interface{}) error {
 	res, errGet := myClient.Do(req)
 	if errGet != nil {
-		log.Fatal("Error: ", errGet)
+		log.Printf("Error in myClient: %s", errGet)
+		return errGet
 	}
 	defer res.Body.Close()
 

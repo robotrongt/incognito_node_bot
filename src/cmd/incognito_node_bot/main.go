@@ -131,7 +131,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			nodo = params[0]
 		}
 		log.Println("/altezza", nodo, np, params)
-		theUrl := "http://95.217.164.210:9334"
+		theUrl := "http://127.0.0.1:9334"
 		if urlNode, err := env.db.GetUrlNode(ChatData.ChatID, nodo); err == nil {
 			theUrl = urlNode.NodeURL
 		}
