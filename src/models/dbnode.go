@@ -424,7 +424,7 @@ func (db *DBnode) UpdateMiningKey(miningkey *MiningKey) error {
 		}
 		defer stmt.Close()
 
-		_, err = stmt.Exec(mk.PubKey, mk.LastStatus)
+		_, err = stmt.Exec(miningkey.PubKey, miningkey.LastStatus)
 		if err != nil {
 			log.Println("UpdateMiningKey error:", err)
 		}
@@ -436,7 +436,7 @@ func (db *DBnode) UpdateMiningKey(miningkey *MiningKey) error {
 		}
 		defer stmt.Close()
 
-		_, err = stmt.Exec(mk.LastStatus, mk.PubKey)
+		_, err = stmt.Exec(miningkey.LastStatus, miningkey.PubKey)
 		if err != nil {
 			log.Println("UpdateMiningKey error:", err)
 		}
