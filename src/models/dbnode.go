@@ -441,8 +441,8 @@ func (db *DBnode) UpdateMiningKey(miningkey *MiningKey) error {
 			log.Println("UpdateMiningKey error:", err)
 		}
 	}
-	if precLastStatus != mk.LastStatus { //status changed, must notify
-		log.Printf("UpdateMiningKey found status change for key %s: from \"%s\" to\" %s\".", miningkey.PubKey, mk.LastStatus, miningkey.LastStatus)
+	if precLastStatus != miningkey.LastStatus { //status changed, must notify
+		log.Printf("UpdateMiningKey found status change for key %s: from \"%s\" to\" %s\".", miningkey.PubKey, precLastStatus, miningkey.LastStatus)
 	}
 
 	return nil
