@@ -39,6 +39,11 @@ type ChatKey struct {
 	PubKey   string
 }
 
+type MiningKey struct {
+	PubKey     string
+	LastStatus string
+}
+
 //Recupera un record utente o lo crea vuoto se non esiste
 func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 	retVal := &ChatUser{chatID, "", true}
@@ -376,6 +381,68 @@ func (db *DBnode) DelChatKey(chatID int64, keyAlias string) error {
 	_, err = stmt.Exec(chatID, keyAlias)
 	if err != nil {
 		log.Println("DelChatKey error:", err)
+	}
+
+	return nil
+}
+
+//Recupera una MiningKey
+func (db *DBnode) GetMiningKey(pubkey string) (*MiningKey, error) {
+	log.Println("GetMiningKey:", pubkey)
+	retVal := &MiningKey{}
+
+	stmt, err := db.DB.Prepare("SELECT `PubKey`,`LastStatus` FROM `PubKey` where PubKey = ?")
+	if err != nil {
+		log.Println("GetMiningKey error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+	err = stmt.QueryRow(pubkey).Scan(&retVal.PubKey, &retVal.LastStatus)
+	if err != nil {
+		log.Println("GetMiningKey error:", err)
+		return nil, err
+	} else {
+	}
+	log.Println("GetMiningKey: ", retVal.PubKey, retVal.LastStatus)
+
+	return retVal, err
+}
+
+//Aggiorna/crea MiningKey con chiave `PubKey`
+func (db *DBnode) UpdateMiningKey(miningkey *MiningKey) error {
+	log.Println("UpdateMiningKey:", miningkey.PubKey, miningkey.LastStatus)
+	mk, e := db.GetMiningKey(miningkey.PubKey)
+	if e != nil {
+		mk = &MiningKey{PubKey: miningkey.PubKey, LastStatus: "missing"}
+	}
+	var precLastStatus = mk.LastStatus
+	if e != nil { //il record non c'era, lo inseriamo
+		stmt, err := db.DB.Prepare("INSERT INTO `miningkeys`(`PubKey`,`LastStatus`) VALUES (?,?)")
+		if err != nil {
+			log.Println("UpdateMiningKey error:", err)
+			return err
+		}
+		defer stmt.Close()
+
+		_, err = stmt.Exec(mk.PubKey, mk.LastStatus)
+		if err != nil {
+			log.Println("UpdateMiningKey error:", err)
+		}
+	} else { //il record era presente, lo aggiorniamo esclusa la chiave
+		stmt, err := db.DB.Prepare("UPDATE miningkeys SET LastStatus = ? WHERE PubKey = ?")
+		if err != nil {
+			log.Println("UpdateMiningKey error:", err)
+			return err
+		}
+		defer stmt.Close()
+
+		_, err = stmt.Exec(mk.LastStatus, mk.PubKey)
+		if err != nil {
+			log.Println("UpdateMiningKey error:", err)
+		}
+	}
+	if precLastStatus != mk.LastStatus { //status changed, must notify
+		log.Printf("UpdateMiningKey found status change for key %s: from \"%s\" to\" %s\".", miningkey.PubKey, mk.LastStatus, miningkey.LastStatus)
 	}
 
 	return nil

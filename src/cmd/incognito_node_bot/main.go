@@ -14,11 +14,17 @@ import (
 )
 
 type Env struct {
-	db       *models.DBnode
-	TOKEN    string
-	API      string
-	BOT_NAME string
-	BOT_CMDS map[string]string
+	db               *models.DBnode
+	TOKEN            string
+	API              string
+	BOT_NAME         string
+	BOT_CMDS         []Cmd
+	DEFAULT_NODE_URL string
+}
+
+type Cmd struct {
+	cmd   string
+	descr string
 }
 
 func (env *Env) GetSendMessageUrl() string {
@@ -40,17 +46,19 @@ func main() {
 		TOKEN:    os.Getenv("TOKEN"),
 		API:      "https://api.telegram.org/bot",
 		BOT_NAME: "@incognito_node_bot",
-		BOT_CMDS: map[string]string{
-			"/start":     "inizializza il bot",
-			"/help":      "elenco comandi bot",
-			"/altezza":   "`/altezza [nodo]` interroga il [nodo] per informazioni blockchain",
-			"/addnode":   "`/addnode [nodo] [urlnodo]` salva o aggiorna url del tuo nodo",
-			"/delnode":   "`/delnode [nodo]` elimina il tuo nodo",
-			"/listnodes": "`/listnodes` elenca i tuoi nodi",
-			"/addkey":    "`/addkey [alias] [pubkey]` salva o aggiorna public key del tuo miner",
-			"/delkey":    "`/delkey [alias]` elimina la public key",
-			"/listkeys":  "`/listkeys` elenca le tua public keys",
+		BOT_CMDS: []Cmd{
+			Cmd{cmd: "/start", descr: "inizializza il bot"},
+			Cmd{cmd: "/help", descr: "elenco comandi bot"},
+			Cmd{cmd: "/altezza", descr: "`/altezza [nodo]` interroga il [nodo] per informazioni blockchain"},
+			Cmd{cmd: "/addnode", descr: "`/addnode [nodo] [urlnodo]` salva o aggiorna url del tuo nodo"},
+			Cmd{cmd: "/delnode", descr: "`/delnode [nodo]` elimina il tuo nodo"},
+			Cmd{cmd: "/listnodes", descr: "`/listnodes` elenca i tuoi nodi"},
+			Cmd{cmd: "/addkey", descr: "`/addkey [alias] [pubkey]` salva o aggiorna public key del tuo miner"},
+			Cmd{cmd: "/delkey", descr: "`/delkey [alias]` elimina la public key"},
+			Cmd{cmd: "/listkeys", descr: "`/listkeys` elenca le tua public keys"},
+			Cmd{cmd: "/status", descr: "`/status [nodo]` elenca lo stato delle tue key di mining"},
 		},
+		DEFAULT_NODE_URL: "http://127.0.0.1:9334",
 	}
 
 	err = env.db.CreateTablesIfNotExists()
@@ -120,7 +128,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			nodo = params[0]
 		}
 		log.Println("/altezza", nodo, np, params)
-		theUrl := "http://127.0.0.1:9334"
+		theUrl := env.DEFAULT_NODE_URL
 		if urlNode, err := env.db.GetUrlNode(ChatData.ChatID, nodo); err == nil {
 			theUrl = urlNode.NodeURL
 		}
@@ -351,6 +359,49 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			log.Println("error in sending reply:", err)
 			return
 		}
+	case env.strCmd(body.Message.Text) == "/status":
+		params := strings.Fields(env.removeCmd(body.Message.Text))
+		np := len(params)
+		nodo := ""
+		if np > 0 {
+			nodo = params[0]
+		}
+		log.Println("/status", nodo, np, params)
+		theUrl := env.DEFAULT_NODE_URL
+		if urlNode, err := env.db.GetUrlNode(ChatData.ChatID, nodo); err == nil {
+			theUrl = urlNode.NodeURL
+		}
+		if err := models.GetBeaconBestStateDetail(theUrl, ChatData, &bbsd); err != nil {
+			log.Println("error getBeaconBestStateDetail:", err)
+			env.sayErr(body.Message.Chat.ID, err)
+			return
+		}
+		listaChiavi, err := env.db.GetChatKeys(body.Message.Chat.ID, 100, 0)
+		if err != nil {
+			messaggio := fmt.Sprint("Problema recuperando le chiavi: ", err)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
+		if err := models.GetBeaconBestStateDetail(theUrl, ChatData, &bbsd); err != nil {
+			log.Println("error getBeaconBestStateDetail:", err)
+			env.sayErr(body.Message.Chat.ID, err)
+			return
+		}
+		messaggio := ""
+		for i, pubkey := range *listaChiavi {
+			status := models.GetPubKeyStatus(&bbsd, pubkey.PubKey)
+			messaggio = fmt.Sprintf("%s\n%d)\t\"%s\"\t%s", messaggio, i+1, pubkey.KeyAlias, status)
+		}
+		if messaggio == "" {
+			messaggio = "Non trovo nulla!"
+		}
+		if err = env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
+
 	default:
 		if err := env.sayText(body.Message.Chat.ID, env.printBOT_CMDS()); err != nil {
 			log.Println("error in sending reply:", err)
@@ -366,10 +417,10 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 //ritorna il comando,se presente, e senza @nomebot tutto minuscolo. Altrimenti stringa vuota
 func (env *Env) strCmd(text string) string {
 	t := strings.ToLower(strings.TrimLeft(text, " "))
-	for cmd := range env.BOT_CMDS {
-		cmdbot := cmd + env.BOT_NAME
-		if strings.HasPrefix(t, cmdbot) || strings.HasPrefix(t, cmd) {
-			return cmd
+	for _, cmd := range env.BOT_CMDS {
+		cmdbot := cmd.cmd + env.BOT_NAME
+		if strings.HasPrefix(t, cmdbot) || strings.HasPrefix(t, cmd.cmd) {
+			return cmd.cmd
 		}
 	}
 	return ""
@@ -379,16 +430,16 @@ func (env *Env) strCmd(text string) string {
 func (env *Env) removeCmd(text string) string {
 	txt := strings.TrimLeft(text, " ")
 	t := strings.ToLower(txt)
-	for cmd := range env.BOT_CMDS {
-		cmdbot := cmd + env.BOT_NAME
+	for _, cmd := range env.BOT_CMDS {
+		cmdbot := cmd.cmd + env.BOT_NAME
 		switch {
 		case strings.HasPrefix(t, cmdbot):
 			{
 				return strings.TrimLeft(txt[len(cmdbot):], " ")
 			}
-		case strings.HasPrefix(t, cmd):
+		case strings.HasPrefix(t, cmd.cmd):
 			{
-				return strings.TrimLeft(txt[len(cmd):], " ")
+				return strings.TrimLeft(txt[len(cmd.cmd):], " ")
 			}
 		}
 	}
@@ -437,8 +488,8 @@ func (env *Env) sayErr(chatID int64, err error) error {
 
 func (env *Env) printBOT_CMDS() string {
 	text := "Prova questi comandi:"
-	for cmd, descr := range env.BOT_CMDS {
-		text = fmt.Sprintf("%s\n%s\t%s", text, cmd, descr)
+	for _, cmd := range env.BOT_CMDS {
+		text = fmt.Sprintf("%s\n%s\t%s", text, cmd.cmd, cmd.descr)
 	}
 
 	return text

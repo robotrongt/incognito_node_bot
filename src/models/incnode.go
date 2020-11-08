@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -58,6 +59,64 @@ type BBSD struct {
 	Params  []string
 	Method  string
 	Jsonrpc string
+}
+
+func CheckIfPresent(pubkey string, arr *[]TPubKey) bool {
+	retval := false
+	for _, tpk := range *arr {
+		if tpk.IncPubKey == pubkey {
+			retval := true
+			return retval
+		}
+
+	}
+	return retval
+}
+
+func CheckAutoStake(pubkey string, arr *[]TPubKeyAuto) bool {
+	retval := false
+	for _, tpka := range *arr {
+		if tpka.IncPubKey == pubkey {
+			retval := tpka.IsAutoStake
+			return retval
+		}
+	}
+	return retval
+}
+
+func GetPubKeyStatus(bbsd *BBSD, pubkey string) string {
+	result := ""
+	autostake := CheckAutoStake(pubkey, &bbsd.Result.AutoStaking)
+
+	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForNextRandom) {
+		result = fmt.Sprintf("%s%s Autostake: %t ", result, "CandidateShardWaitingForNextRandom", autostake)
+	}
+	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForCurrentRandom) {
+		result = fmt.Sprintf("%s%s Autostake: %t ", result, "CandidateShardWaitingForCurrentRandom", autostake)
+	}
+	for shard, arrpk := range bbsd.Result.ShardPendingValidator {
+		if CheckIfPresent(pubkey, &arrpk) {
+			result = fmt.Sprintf("%s%s shard %s Autostake: %t ", "ShardPendingValidator", shard, autostake)
+		}
+	}
+	for shard, arrpk := range bbsd.Result.ShardCommittee {
+		if CheckIfPresent(pubkey, &arrpk) {
+			result = fmt.Sprintf("%s%s shard %s Autostake: %t ", "ShardCommittee", shard, autostake)
+		}
+	}
+	if CheckIfPresent(pubkey, &bbsd.Result.CandidateBeaconWaitingForNextRandom) {
+		result = fmt.Sprintf("%s%s Autostake: %t ", result, "CandidateBeaconWaitingForNextRandom", autostake)
+	}
+	if CheckIfPresent(pubkey, &bbsd.Result.CandidateBeaconWaitingForCurrentRandom) {
+		result = fmt.Sprintf("%s%s Autostake: %t ", result, "CandidateBeaconWaitingForCurrentRandom", autostake)
+	}
+	if CheckIfPresent(pubkey, &bbsd.Result.BeaconPendingValidator) {
+		result = fmt.Sprintf("%s%s Autostake: %t ", result, "BeaconPendingValidator", autostake)
+	}
+	if CheckIfPresent(pubkey, &bbsd.Result.BeaconCommittee) {
+		result = fmt.Sprintf("%s%s Autostake: %t ", result, "BeaconCommittee", autostake)
+	}
+	return result
 }
 
 func GetBeaconBestStateDetail(reqUrl string, user *ChatUser, bbsd *BBSD) error {
