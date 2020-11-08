@@ -89,37 +89,37 @@ func GetPubKeyStatus(bbsd *BBSD, pubkey string) string {
 	autostake := CheckAutoStake(pubkey, &bbsd.Result.AutoStaking)
 
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForNextRandom) {
-		result = fmt.Sprintf("%s%s Autostake: %t ", result, "CandidateShardWaitingForNextRandom", autostake)
+		result = fmt.Sprintf("%s%s AS: %t ", result, "Waiting", autostake)
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForCurrentRandom) {
-		result = fmt.Sprintf("%s%s Autostake: %t ", result, "CandidateShardWaitingForCurrentRandom", autostake)
+		result = fmt.Sprintf("%s%s AS: %t ", result, "Waiting", autostake)
 	}
 	for shard, arrpk := range bbsd.Result.ShardPendingValidator {
 		if CheckIfPresent(pubkey, &arrpk) {
-			result = fmt.Sprintf("%s%s shard %s Autostake: %t ", "ShardPendingValidator", shard, autostake)
+			result = fmt.Sprintf("%s%s shard %s AS: %t ", "Pending", shard, autostake)
 		}
 	}
 	for shard, arrpk := range bbsd.Result.ShardCommittee {
 		if CheckIfPresent(pubkey, &arrpk) {
-			result = fmt.Sprintf("%s%s shard %s Autostake: %t ", "ShardCommittee", shard, autostake)
+			result = fmt.Sprintf("%s%s shard %s AS: %t ", "Committee", shard, autostake)
 		}
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateBeaconWaitingForNextRandom) {
-		result = fmt.Sprintf("%s%s Autostake: %t ", result, "CandidateBeaconWaitingForNextRandom", autostake)
+		result = fmt.Sprintf("%s%s AS: %t ", result, "BeaconWaiting", autostake)
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateBeaconWaitingForCurrentRandom) {
-		result = fmt.Sprintf("%s%s Autostake: %t ", result, "CandidateBeaconWaitingForCurrentRandom", autostake)
+		result = fmt.Sprintf("%s%s AS: %t ", result, "BeaconWaiting", autostake)
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.BeaconPendingValidator) {
-		result = fmt.Sprintf("%s%s Autostake: %t ", result, "BeaconPendingValidator", autostake)
+		result = fmt.Sprintf("%s%s AS: %t ", result, "BeaconPending", autostake)
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.BeaconCommittee) {
-		result = fmt.Sprintf("%s%s Autostake: %t ", result, "BeaconCommittee", autostake)
+		result = fmt.Sprintf("%s%s AS: %t ", result, "BeaconCommittee", autostake)
 	}
 	return result
 }
 
-func GetBeaconBestStateDetail(reqUrl string, user *ChatUser, bbsd *BBSD) error {
+func GetBeaconBestStateDetail(reqUrl string, bbsd *BBSD) error {
 	myClient := &http.Client{Timeout: 10 * time.Second}
 	reqBody := strings.NewReader(`
 	  {

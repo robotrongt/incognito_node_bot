@@ -14,6 +14,7 @@ import (
 )
 
 type Env struct {
+	DBFILE           string
 	db               *models.DBnode
 	TOKEN            string
 	API              string
@@ -32,17 +33,9 @@ func (env *Env) GetSendMessageUrl() string {
 }
 
 func main() {
-	//	var err error
-	db, err := models.NewDB("sqlite3", "./incbot.db")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.DB.Close()
-	defer log.Println("Exiting...")
-	defer log.Printf("%T %T\n", db, db.DB)
-
 	env := &Env{
-		db:       db,
+		DBFILE:   os.Getenv("DBFILE"),
+		db:       nil,
 		TOKEN:    os.Getenv("TOKEN"),
 		API:      "https://api.telegram.org/bot",
 		BOT_NAME: "@incognito_node_bot",
@@ -60,14 +53,22 @@ func main() {
 		},
 		DEFAULT_NODE_URL: "http://127.0.0.1:9334",
 	}
+	db, err := models.NewDB("sqlite3", "./incbot.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.DB.Close()
+	defer log.Println("Exiting...")
+	defer log.Printf("%T %T\n", db, db.DB)
+	env.db = db
 
 	err = env.db.CreateTablesIfNotExists()
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Println("SendMessageUrl: " + env.GetSendMessageUrl())
-	for cmd, descr := range env.BOT_CMDS {
-		log.Printf("cmd=\"%s\" descr=\"%s\"\n", cmd, descr)
+	for _, cmd := range env.BOT_CMDS {
+		log.Printf("cmd=\"%s\" descr=\"%s\"\n", cmd.cmd, cmd.descr)
 	}
 
 	http.ListenAndServeTLS(":8443", "cert.pem", "key.pem", http.HandlerFunc(env.Handler))
@@ -132,7 +133,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		if urlNode, err := env.db.GetUrlNode(ChatData.ChatID, nodo); err == nil {
 			theUrl = urlNode.NodeURL
 		}
-		if err := models.GetBeaconBestStateDetail(theUrl, ChatData, &bbsd); err != nil {
+		if err := models.GetBeaconBestStateDetail(theUrl, &bbsd); err != nil {
 			log.Println("error getBeaconBestStateDetail:", err)
 			env.sayErr(body.Message.Chat.ID, err)
 			return
@@ -371,7 +372,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		if urlNode, err := env.db.GetUrlNode(ChatData.ChatID, nodo); err == nil {
 			theUrl = urlNode.NodeURL
 		}
-		if err := models.GetBeaconBestStateDetail(theUrl, ChatData, &bbsd); err != nil {
+		if err := models.GetBeaconBestStateDetail(theUrl, &bbsd); err != nil {
 			log.Println("error getBeaconBestStateDetail:", err)
 			env.sayErr(body.Message.Chat.ID, err)
 			return
@@ -384,11 +385,6 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			}
 			return
 		}
-		if err := models.GetBeaconBestStateDetail(theUrl, ChatData, &bbsd); err != nil {
-			log.Println("error getBeaconBestStateDetail:", err)
-			env.sayErr(body.Message.Chat.ID, err)
-			return
-		}
 		messaggio := ""
 		for i, pubkey := range *listaChiavi {
 			status := models.GetPubKeyStatus(&bbsd, pubkey.PubKey)
@@ -397,7 +393,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 				PubKey:     pubkey.PubKey,
 				LastStatus: status,
 			}
-			env.db.UpdateMiningKey(mk)
+			env.db.UpdateMiningKey(mk, models.StatusChangeNotifierFunc(env.StatusChanged))
 		}
 		if messaggio == "" {
 			messaggio = "Non trovo nulla!"
@@ -460,6 +456,23 @@ func (env *Env) removeCmd(text string) string {
 type sendMessageReqBody struct {
 	ChatID int64  `json:"chat_id"`
 	Text   string `json:"text"`
+}
+
+func (env *Env) StatusChanged(pubkey, oldstat, newstat string) error {
+	log.Printf("Status Changed: %s %s %s", pubkey, oldstat, newstat)
+	chatkeys, err := env.db.GetChatKeysByPubKey(pubkey, 100, 0)
+	if err != nil {
+		return err
+	}
+	for _, chatkey := range *chatkeys {
+		messaggio := fmt.Sprintf("\"%s\" %s -> %s", chatkey.KeyAlias, oldstat, newstat)
+		log.Printf("Notify chat: %d %s", chatkey.ChatID, messaggio)
+		if err = env.sayText(chatkey.ChatID, messaggio); err != nil {
+			log.Println("error in sending reply:", err)
+		}
+
+	}
+	return err
 }
 
 func (env *Env) sayText(chatID int64, text string) error {

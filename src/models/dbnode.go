@@ -44,6 +44,8 @@ type MiningKey struct {
 	LastStatus string
 }
 
+type StatusChangeNotifierFunc func(pubkey, oldstatus, newstatus string) error
+
 //Recupera un record utente o lo crea vuoto se non esiste
 func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 	retVal := &ChatUser{chatID, "", true}
@@ -368,6 +370,44 @@ func (db *DBnode) GetChatKeys(chatID int64, limit, offset int) (*[]ChatKey, erro
 	return &chatkeys, err
 }
 
+//Recupera lista chiavi Chat per PubKey
+func (db *DBnode) GetChatKeysByPubKey(pubkey string, limit, offset int) (*[]ChatKey, error) {
+	stmt, err := db.DB.Prepare("SELECT `ChatID`,`KeyAlias`,`PubKey` FROM `chatkeys` WHERE PubKey = ? LIMIT ? OFFSET ?")
+	if err != nil {
+		log.Println("GetChatKeysByPubKey error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := &sql.Rows{}
+	rows, err = stmt.Query(pubkey, limit, offset)
+	if err != nil {
+		log.Println("GetChatKeysByPubKey error:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	var chatkeys []ChatKey
+	for rows.Next() {
+		var chatid int64
+		var keyalias string
+		var pubkey string
+		err = rows.Scan(&chatid, &keyalias, &pubkey)
+		if err != nil {
+			log.Println("GetChatKeys error:", err)
+			return nil, err
+		}
+
+		log.Println(chatid, keyalias, pubkey)
+		chatkeys = append(chatkeys, ChatKey{ChatID: chatid, KeyAlias: keyalias, PubKey: pubkey})
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("GetChatKeysByPubKey error:", err)
+		return nil, err
+	}
+
+	return &chatkeys, err
+}
+
 //Elimina ChatKey con chiave `ChatID`+`KeyAlias`
 func (db *DBnode) DelChatKey(chatID int64, keyAlias string) error {
 	log.Println("DelChatKey:", chatID, keyAlias)
@@ -409,7 +449,7 @@ func (db *DBnode) GetMiningKey(pubkey string) (*MiningKey, error) {
 }
 
 //Aggiorna/crea MiningKey con chiave `PubKey`
-func (db *DBnode) UpdateMiningKey(miningkey *MiningKey) error {
+func (db *DBnode) UpdateMiningKey(miningkey *MiningKey, callback StatusChangeNotifierFunc) error {
 	log.Println("UpdateMiningKey:", miningkey.PubKey, miningkey.LastStatus)
 	mk, e := db.GetMiningKey(miningkey.PubKey)
 	if e != nil {
@@ -443,9 +483,51 @@ func (db *DBnode) UpdateMiningKey(miningkey *MiningKey) error {
 	}
 	if precLastStatus != miningkey.LastStatus { //status changed, must notify
 		log.Printf("UpdateMiningKey found status change for key %s: from \"%s\" to\" %s\".", miningkey.PubKey, precLastStatus, miningkey.LastStatus)
+		err := callback(miningkey.PubKey, precLastStatus, miningkey.LastStatus)
+		if err != nil {
+			log.Println("UpdateMiningKey Err in callback: ", err)
+		}
+
 	}
 
 	return nil
+}
+
+//Recupera lista chiavi mining
+func (db *DBnode) GetMiningKeys(limit, offset int) (*[]MiningKey, error) {
+	stmt, err := db.DB.Prepare("SELECT `PubKey`,`LastStatus` FROM `miningkeys` LIMIT ? OFFSET ?")
+	if err != nil {
+		log.Println("GetMiningKeys error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := &sql.Rows{}
+	rows, err = stmt.Query(limit, offset)
+	if err != nil {
+		log.Println("GetMiningKeys error:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	var miningkeys []MiningKey
+	for rows.Next() {
+		var pubkey string
+		var laststatus string
+		err = rows.Scan(&pubkey, &laststatus)
+		if err != nil {
+			log.Println("GetMiningKeys error:", err)
+			return nil, err
+		}
+
+		log.Println(pubkey, laststatus)
+		miningkeys = append(miningkeys, MiningKey{PubKey: pubkey, LastStatus: laststatus})
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("GetMiningKeys error:", err)
+		return nil, err
+	}
+
+	return &miningkeys, err
 }
 
 func (db *DBnode) GetFionaText() string {
