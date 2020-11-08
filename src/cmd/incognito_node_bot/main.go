@@ -393,6 +393,11 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		for i, pubkey := range *listaChiavi {
 			status := models.GetPubKeyStatus(&bbsd, pubkey.PubKey)
 			messaggio = fmt.Sprintf("%s\n%d)\t\"%s\"\t%s", messaggio, i+1, pubkey.KeyAlias, status)
+			mk := &models.MiningKey{
+				PubKey:     pubkey.PubKey,
+				LastStatus: status,
+			}
+			env.db.UpdateMiningKey(mk)
 		}
 		if messaggio == "" {
 			messaggio = "Non trovo nulla!"
