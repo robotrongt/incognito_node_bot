@@ -391,7 +391,7 @@ func (db *DBnode) GetMiningKey(pubkey string) (*MiningKey, error) {
 	log.Println("GetMiningKey:", pubkey)
 	retVal := &MiningKey{}
 
-	stmt, err := db.DB.Prepare("SELECT `PubKey`,`LastStatus` FROM `PubKey` where PubKey = ?")
+	stmt, err := db.DB.Prepare("SELECT `PubKey`,`LastStatus` FROM `miningkeys` where PubKey = ?")
 	if err != nil {
 		log.Println("GetMiningKey error:", err)
 		return nil, err
