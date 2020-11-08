@@ -53,7 +53,7 @@ func main() {
 		},
 		DEFAULT_NODE_URL: "http://127.0.0.1:9334",
 	}
-	db, err := models.NewDB("sqlite3", "./incbot.db")
+	db, err := models.NewDB("sqlite3", env.DBFILE)
 	if err != nil {
 		log.Fatal(err)
 	}
