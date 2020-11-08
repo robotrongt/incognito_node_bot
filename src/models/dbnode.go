@@ -33,6 +33,12 @@ type UrlNode struct {
 	NodeURL  string
 }
 
+type ChatKey struct {
+	ChatID   int64
+	KeyAlias string
+	PubKey   string
+}
+
 //Recupera un record utente o lo crea vuoto se non esiste
 func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 	retVal := &ChatUser{chatID, "", true}
@@ -258,6 +264,123 @@ func (db *DBnode) DelNode(unid int64) error {
 	return nil
 }
 
+//Recupera una Chiave della Chat
+func (db *DBnode) GetChatKey(chatID int64, keyAlias string) (*ChatKey, error) {
+	log.Println("GetChatKey:", chatID, keyAlias)
+	retVal := &ChatKey{}
+
+	stmt, err := db.DB.Prepare("SELECT `ChatID`,`KeyAlias`,`PubKey` FROM `chatkeys` where ChatID = ? AND KeyAlias = ?")
+	if err != nil {
+		log.Println("GetChatKey error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+	err = stmt.QueryRow(chatID, keyAlias).Scan(&retVal.ChatID, &retVal.KeyAlias, &retVal.PubKey)
+	if err != nil {
+		log.Println("GetChatKey error:", err)
+		return nil, err
+	} else {
+	}
+	log.Println("GetChatKey: ", retVal.ChatID, retVal.KeyAlias, retVal.PubKey)
+
+	return retVal, err
+}
+
+//Aggiorna/crea ChatKey con chiave `ChatID`+`KeyAlias`
+func (db *DBnode) UpdateChatKey(chatKey *ChatKey) error {
+	log.Println("UpdateChatKey:", chatKey.ChatID, chatKey.KeyAlias, chatKey.PubKey)
+	ck, e := db.GetChatKey(chatKey.ChatID, chatKey.KeyAlias)
+	if e != nil {
+		ck = &ChatKey{}
+	}
+	ck.ChatID = chatKey.ChatID
+	ck.KeyAlias = chatKey.KeyAlias
+	ck.PubKey = chatKey.PubKey
+	if e != nil { //il record non c'era, lo inseriamo
+		stmt, err := db.DB.Prepare("INSERT INTO `chatkeys`(`ChatID`,`KeyAlias`,`PubKey`) VALUES (?,?,?)")
+		if err != nil {
+			log.Println("UpdateChatKey error:", err)
+			return err
+		}
+		defer stmt.Close()
+
+		_, err = stmt.Exec(ck.ChatID, ck.KeyAlias, ck.PubKey)
+		if err != nil {
+			log.Println("UpdateChatKey error:", err)
+		}
+	} else { //il record era presente, lo aggiorniamo, la chiave non serve aggiornarla
+		stmt, err := db.DB.Prepare("UPDATE chatkeys SET PubKey = ? WHERE ChatID = ? AND KeyAlias = ?")
+		if err != nil {
+			log.Println("UpdateChatKey error:", err)
+			return err
+		}
+		defer stmt.Close()
+
+		_, err = stmt.Exec(ck.PubKey, ck.ChatID, ck.KeyAlias)
+		if err != nil {
+			log.Println("UpdateChatKey error:", err)
+		}
+	}
+
+	return nil
+}
+
+//Recupera lista chiavi per ChatID
+func (db *DBnode) GetChatKeys(chatID int64, limit, offset int) (*[]ChatKey, error) {
+	stmt, err := db.DB.Prepare("SELECT `ChatID`,`KeyAlias`,`PubKey` FROM `chatkeys` WHERE ChatID = ? LIMIT ? OFFSET ?")
+	if err != nil {
+		log.Println("GetChatKeys error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := &sql.Rows{}
+	rows, err = stmt.Query(chatID, limit, offset)
+	if err != nil {
+		log.Println("GetChatKeys error:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	var chatkeys []ChatKey
+	for rows.Next() {
+		var chatid int64
+		var keyalias string
+		var pubkey string
+		err = rows.Scan(&chatid, &keyalias, &pubkey)
+		if err != nil {
+			log.Println("GetChatKeys error:", err)
+			return nil, err
+		}
+
+		log.Println(chatid, keyalias, pubkey)
+		chatkeys = append(chatkeys, ChatKey{ChatID: chatid, KeyAlias: keyalias, PubKey: pubkey})
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("GetChatKeys error:", err)
+		return nil, err
+	}
+
+	return &chatkeys, err
+}
+
+//Elimina ChatKey con chiave `ChatID`+`KeyAlias`
+func (db *DBnode) DelChatKey(chatID int64, keyAlias string) error {
+	log.Println("DelChatKey:", chatID, keyAlias)
+	stmt, err := db.DB.Prepare("DELETE FROM `chatkeys` WHERE ChatID = ? AND KeyAlias = ?")
+	if err != nil {
+		log.Println("DelChatKey error:", err)
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(chatID, keyAlias)
+	if err != nil {
+		log.Println("DelChatKey error:", err)
+	}
+
+	return nil
+}
+
 func (db *DBnode) GetFionaText() string {
 	m := map[string]string{
 		"2020-11-01": "-53 (-36)",
@@ -333,6 +456,8 @@ func (db *DBnode) CreateTablesIfNotExists() error {
 	var create_statements = [...]string{
 		`CREATE TABLE IF NOT EXISTS "chatdata" ( "ChatID" integer NOT NULL, "Name" text, "NameAsked" INTEGER DEFAULT 1, PRIMARY KEY("ChatID") )`,
 		`CREATE TABLE IF NOT EXISTS "urlnodes" ( "UNId" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, "ChatID" INTEGER, "NodeName" TEXT, "NodeURL" TEXT )`,
+		`CREATE TABLE IF NOT EXISTS "chatkeys" ( "ChatID" INTEGER, "KeyAlias" TEXT, "PubKey" TEXT, PRIMARY KEY("ChatID","KeyAlias") )`,
+		`CREATE TABLE IF NOT EXISTS "miningkeys" ( "PubKey" TEXT NOT NULL UNIQUE, "LastStatus" TEXT, PRIMARY KEY("PubKey") )`,
 	}
 	var err error = nil
 	for _, statement := range create_statements {

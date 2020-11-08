@@ -47,6 +47,9 @@ func main() {
 			"/addnode":   "`/addnode [nodo] [urlnodo]` salva o aggiorna url del tuo nodo",
 			"/delnode":   "`/delnode [nodo]` elimina il tuo nodo",
 			"/listnodes": "`/listnodes` elenca i tuoi nodi",
+			"/addkey":    "`/addkey [alias] [pubkey]` salva o aggiorna public key del tuo miner",
+			"/delkey":    "`/delkey [alias]` elimina la public key",
+			"/listkeys":  "`/listkeys` elenca le tua public keys",
 		},
 	}
 
@@ -54,20 +57,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	/*
-		u, e := env.db.GetUrlNode(1, "pippo")
-		log.Println("env.db.GetUrlNode err:", e)
-		log.Println("env.db.GetUrlNode u:", u)
-		if e != nil {
-			u = &models.UrlNode{}
-		}
-		u.ChatID = 2
-		u.NodeName = "pippo2"
-		u.NodeURL = "pippurlx2"
-		e = env.db.UpdateUrlNode(u)
-		log.Println("env.db.UpdateUrlNode err:", e)
-	*/
-	//	fmt.Printf("ChatData: %T", ChatData)
 	log.Println("SendMessageUrl: " + env.GetSendMessageUrl())
 	for cmd, descr := range env.BOT_CMDS {
 		log.Printf("cmd=\"%s\" descr=\"%s\"\n", cmd, descr)
@@ -253,6 +242,111 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		messaggio := fmt.Sprintf("Nodo %s (%d) eliminato.", nodo, unid)
+		if err = env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
+	case env.strCmd(body.Message.Text) == "/addkey":
+		params := strings.Fields(env.removeCmd(body.Message.Text))
+		np := len(params)
+		alias := ""
+		pubkey := ""
+		if np < 2 {
+			messaggio := fmt.Sprint("Problema sui parametri di addkey, servono [alias] [pubkey] ", len(params), " ", params)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
+		alias = params[0]
+		pubkey = params[1]
+		log.Println("/addkey", alias, pubkey, np, params)
+		err := env.db.UpdateChatKey(&models.ChatKey{ChatID: body.Message.Chat.ID, KeyAlias: alias, PubKey: pubkey})
+		if err != nil {
+			messaggio := fmt.Sprint("Problema aggiornamento chiave: ", err)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
+		messaggio := fmt.Sprint("Chiave aggiornata: \"", alias, "\" ", pubkey)
+		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
+	case env.strCmd(body.Message.Text) == "/listkeys":
+		listaChiavi, err := env.db.GetChatKeys(body.Message.Chat.ID, 100, 0)
+		if err != nil {
+			messaggio := fmt.Sprint("Problema recuperando le chiavi: ", err)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
+		messaggio := ""
+		for i, pubkey := range *listaChiavi {
+			messaggio = fmt.Sprintf("%s\n%d)\t\"%s\"\t%s", messaggio, i+1, pubkey.KeyAlias, pubkey.PubKey)
+		}
+		log.Printf("/listkeys invio %d chiavi.", len(*listaChiavi))
+		if messaggio == "" {
+			messaggio = "Non trovo nulla!"
+		}
+		if err = env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
+	case env.strCmd(body.Message.Text) == "/delkey":
+		listaChiavi, err := env.db.GetChatKeys(body.Message.Chat.ID, 100, 0)
+		if err != nil {
+			messaggio := fmt.Sprint("Problema recuperando le chiavi: ", err)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
+		if len(*listaChiavi) == 0 {
+			messaggio := fmt.Sprintf("Mi spiace, non hai chiavi.")
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
+		params := strings.Fields(env.removeCmd(body.Message.Text))
+		np := len(params)
+		if len(*listaChiavi) > 1 && np < 1 {
+			messaggio := fmt.Sprintf("Problema sui parametri di delkey, serve [alias] perché hai %d chiavi. ", len(*listaChiavi))
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
+		alias := "not found"
+		if np > 0 {
+			for _, pubkey := range *listaChiavi {
+				if pubkey.KeyAlias == params[0] {
+					alias = pubkey.KeyAlias
+				}
+			}
+		} else {
+			alias = (*listaChiavi)[0].KeyAlias
+		}
+		log.Println("/delkey ChatId=", body.Message.Chat.ID, " Alias=", alias)
+		if alias == "not found" {
+			messaggio := fmt.Sprint("Problema cancellando alias chiave: ", alias)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
+		err = env.db.DelChatKey(body.Message.Chat.ID, alias)
+		if err != nil {
+			messaggio := fmt.Sprint("Problema cancellando alias chiave: ", err)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
+		messaggio := fmt.Sprintf("Chiave %s eliminata.", alias)
 		if err = env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
 			return
