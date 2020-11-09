@@ -132,6 +132,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		theUrl := env.DEFAULT_NODE_URL
 		if urlNode, err := env.db.GetUrlNode(ChatData.ChatID, nodo); err == nil {
 			theUrl = urlNode.NodeURL
+		} else {
 			if np > 0 {
 				messaggio := fmt.Sprintf("Non trovo tuo nodo \"%s\" uso mio nodo", nodo)
 				if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
@@ -377,6 +378,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		theUrl := env.DEFAULT_NODE_URL
 		if urlNode, err := env.db.GetUrlNode(ChatData.ChatID, nodo); err == nil {
 			theUrl = urlNode.NodeURL
+		} else {
 			if np > 0 {
 				messaggio := fmt.Sprintf("Non trovo tuo nodo \"%s\" uso mio nodo", nodo)
 				if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
