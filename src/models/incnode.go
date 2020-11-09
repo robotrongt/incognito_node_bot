@@ -86,42 +86,47 @@ func CheckAutoStake(pubkey string, arr *[]TPubKeyAuto) bool {
 
 func GetPubKeyStatus(bbsd *BBSD, pubkey string) string {
 	result := "missing"
+	up := "👆"
+	down := "👇"
 	autostake := CheckAutoStake(pubkey, &bbsd.Result.AutoStaking)
-
+	as := down
+	if autostake {
+		as = up
+	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForNextRandom) {
-		result = fmt.Sprintf("%s AS: %t", "Waiting", autostake)
+		result = fmt.Sprintf("%s%s", "Waiting", as)
 		return result
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForCurrentRandom) {
-		result = fmt.Sprintf("%s AS: %t", "Waiting", autostake)
+		result = fmt.Sprintf("%s%s", "Waiting", as)
 		return result
 	}
 	for shard, arrpk := range bbsd.Result.ShardPendingValidator {
 		if CheckIfPresent(pubkey, &arrpk) {
-			result = fmt.Sprintf("%s shard %s AS: %t", "Pending", shard, autostake)
+			result = fmt.Sprintf("%s shard %s%s", "Pending", shard, as)
 			return result
 		}
 	}
 	for shard, arrpk := range bbsd.Result.ShardCommittee {
 		if CheckIfPresent(pubkey, &arrpk) {
-			result = fmt.Sprintf("%s shard %s AS: %t", "Committee", shard, autostake)
+			result = fmt.Sprintf("%s shard %s%s", "Committee", shard, as)
 			return result
 		}
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateBeaconWaitingForNextRandom) {
-		result = fmt.Sprintf("%s AS: %t", "BeaconWaiting", autostake)
+		result = fmt.Sprintf("%s%s", "BeaconWaiting", as)
 		return result
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateBeaconWaitingForCurrentRandom) {
-		result = fmt.Sprintf("%s AS: %t ", "BeaconWaiting", autostake)
+		result = fmt.Sprintf("%s%s", "BeaconWaiting", as)
 		return result
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.BeaconPendingValidator) {
-		result = fmt.Sprintf("%s AS: %t ", "BeaconPending", autostake)
+		result = fmt.Sprintf("%s%s", "BeaconPending", as)
 		return result
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.BeaconCommittee) {
-		result = fmt.Sprintf("%s AS: %t ", "BeaconCommittee", autostake)
+		result = fmt.Sprintf("%s%s", "BeaconCommittee", as)
 		return result
 	}
 	return result
