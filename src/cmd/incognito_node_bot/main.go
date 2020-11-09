@@ -138,6 +138,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 				if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 					log.Println("error in sending reply:", err)
 				}
+				nodo = ""
 			}
 		}
 		if err := models.GetBeaconBestStateDetail(theUrl, &bbsd); err != nil {
