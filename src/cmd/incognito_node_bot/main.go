@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -162,7 +163,13 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			nodestring = fmt.Sprintf("nodo \"%s\"", nodo)
 		}
 		messaggio := fmt.Sprintf("Ecco %s, al %s risulta altezza: %d, epoca: %d/%d (%d)", ChatData.Name, nodestring, bbsd.Result.BeaconHeight, bbsd.Result.Epoch, 350-(bbsd.Result.BeaconHeight%350), bci.Result.BestBlocks["-1"].RemainingBlockEpoch)
-		for shard, height := range bbsd.Result.BestShardHeight {
+		shards := make([]string, 0, len(bbsd.Result.BestShardHeight))
+		for shard := range bbsd.Result.BestShardHeight {
+			shards = append(shards, shard)
+		}
+		sort.Strings(shards)
+		for _, shard := range shards {
+			height := bbsd.Result.BestShardHeight[shard]
 			nodeheight := bci.Result.BestBlocks[shard].Height
 			messaggio = fmt.Sprintf("%s\nshard %s heigth %d node height %d", messaggio, shard, height, nodeheight)
 		}
