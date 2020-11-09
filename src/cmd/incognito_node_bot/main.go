@@ -157,7 +157,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		}
 		messaggio := fmt.Sprintf("Ecco %s, al %s risulta altezza: %d, epoca: %d/%d", ChatData.Name, nodestring, bbsd.Result.BeaconHeight, bbsd.Result.Epoch, 350-(bbsd.Result.BeaconHeight%350))
 		for shard, height := range bbsd.Result.BestShardHeight {
-			messaggio = fmt.Sprintf("%s\nshard %s heigth %d", shard, height)
+			messaggio = fmt.Sprintf("%s\nshard %s heigth %d", messaggio, shard, height)
 		}
 		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
