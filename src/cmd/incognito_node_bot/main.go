@@ -100,6 +100,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 	}
 	ChatData, _ := env.db.GetUserByChatID(body.Message.Chat.ID)
 	bbsd := models.BBSD{}
+	bci := models.BCI{}
 	log.Println("Ricevuto:", body.Message.Text)
 	switch {
 	case env.strCmd(body.Message.Text) == "/start":
@@ -151,13 +152,19 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			env.sayErr(body.Message.Chat.ID, err)
 			return
 		}
+		if err := models.GetBlockChainInfo(theUrl, &bci); err != nil {
+			log.Println("error GetBlockChainInfo:", err)
+			env.sayErr(body.Message.Chat.ID, err)
+			return
+		}
 		nodestring := "mio nodo"
 		if len(nodo) > 0 {
 			nodestring = fmt.Sprintf("nodo \"%s\"", nodo)
 		}
-		messaggio := fmt.Sprintf("Ecco %s, al %s risulta altezza: %d, epoca: %d/%d", ChatData.Name, nodestring, bbsd.Result.BeaconHeight, bbsd.Result.Epoch, 350-(bbsd.Result.BeaconHeight%350))
+		messaggio := fmt.Sprintf("Ecco %s, al %s risulta altezza: %d, epoca: %d/%d (%d)", ChatData.Name, nodestring, bbsd.Result.BeaconHeight, bbsd.Result.Epoch, 350-(bbsd.Result.BeaconHeight%350), bci.Result.BestBlocks["-1"].RemainingBlockEpoch)
 		for shard, height := range bbsd.Result.BestShardHeight {
-			messaggio = fmt.Sprintf("%s\nshard %s heigth %d", messaggio, shard, height)
+			nodeheight := bci.Result.BestBlocks[shard].Height
+			messaggio = fmt.Sprintf("%s\nshard %s heigth %d node height %d", messaggio, shard, height, nodeheight)
 		}
 		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)

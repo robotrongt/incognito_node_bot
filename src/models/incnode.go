@@ -61,6 +61,31 @@ type BBSD struct {
 	Jsonrpc string
 }
 
+type TBestBlock struct {
+	Height              int64
+	Hash                string
+	TotalTxs            int64
+	BlockProducer       string
+	ValidationData      interface{}
+	Epoch               int64
+	Time                int64
+	RemainingBlockEpoch int
+	EpochBlock          int
+}
+type TBlochChainInfo struct {
+	ChainName    string
+	BestBlocks   map[string]TBestBlock
+	ActiveShards int
+}
+type BCI struct {
+	Id      int
+	Result  TBlochChainInfo
+	Error   string
+	Params  []string
+	Method  string
+	Jsonrpc string
+}
+
 func CheckIfPresent(pubkey string, arr *[]TPubKey) bool {
 	retval := false
 	for _, tpk := range *arr {
@@ -158,6 +183,35 @@ func GetBeaconBestStateDetail(reqUrl string, bbsd *BBSD) error {
 	}
 	log.Printf("Result.BeaconHeight: %d\n", bbsd.Result.BeaconHeight)
 	log.Printf("Result.Epoch: %d\n", bbsd.Result.Epoch)
+	return err
+}
+
+func GetBlockChainInfo(reqUrl string, bci *BCI) error {
+	myClient := &http.Client{Timeout: 10 * time.Second}
+	reqBody := strings.NewReader(`
+	  {
+		"id": 1,
+		"jsonrpc": "1.0",
+		"method": "getblockchaininfo",
+		"params": []
+	  }
+	`)
+	req, err := http.NewRequest(
+		"GET",
+		reqUrl,
+		reqBody,
+	)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+
+	err = getJson(myClient, req, &bci)
+	if err != nil {
+		return err
+	}
+	log.Printf("Result.ChainName: %s\n", bci.Result.ChainName)
+	log.Printf("Result.ActiveShards: %d\n", bci.Result.ActiveShards)
 	return err
 }
 
