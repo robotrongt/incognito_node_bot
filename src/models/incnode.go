@@ -85,36 +85,44 @@ func CheckAutoStake(pubkey string, arr *[]TPubKeyAuto) bool {
 }
 
 func GetPubKeyStatus(bbsd *BBSD, pubkey string) string {
-	result := ""
+	result := "missing"
 	autostake := CheckAutoStake(pubkey, &bbsd.Result.AutoStaking)
 
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForNextRandom) {
-		result = fmt.Sprintf("%s%s AS: %t ", result, "Waiting", autostake)
+		result = fmt.Sprintf("%s AS: %t", "Waiting", autostake)
+		return result
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForCurrentRandom) {
-		result = fmt.Sprintf("%s%s AS: %t ", result, "Waiting", autostake)
+		result = fmt.Sprintf("%s AS: %t", "Waiting", autostake)
+		return result
 	}
 	for shard, arrpk := range bbsd.Result.ShardPendingValidator {
 		if CheckIfPresent(pubkey, &arrpk) {
-			result = fmt.Sprintf("%s%s shard %s AS: %t ", "Pending", shard, autostake)
+			result = fmt.Sprintf("%s shard %s AS: %t", "Pending", shard, autostake)
+			return result
 		}
 	}
 	for shard, arrpk := range bbsd.Result.ShardCommittee {
 		if CheckIfPresent(pubkey, &arrpk) {
-			result = fmt.Sprintf("%s%s shard %s AS: %t ", "Committee", shard, autostake)
+			result = fmt.Sprintf("%s shard %s AS: %t", "Committee", shard, autostake)
+			return result
 		}
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateBeaconWaitingForNextRandom) {
-		result = fmt.Sprintf("%s%s AS: %t ", result, "BeaconWaiting", autostake)
+		result = fmt.Sprintf("%s AS: %t", "BeaconWaiting", autostake)
+		return result
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateBeaconWaitingForCurrentRandom) {
-		result = fmt.Sprintf("%s%s AS: %t ", result, "BeaconWaiting", autostake)
+		result = fmt.Sprintf("%s AS: %t ", "BeaconWaiting", autostake)
+		return result
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.BeaconPendingValidator) {
-		result = fmt.Sprintf("%s%s AS: %t ", result, "BeaconPending", autostake)
+		result = fmt.Sprintf("%s AS: %t ", "BeaconPending", autostake)
+		return result
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.BeaconCommittee) {
-		result = fmt.Sprintf("%s%s AS: %t ", result, "BeaconCommittee", autostake)
+		result = fmt.Sprintf("%s AS: %t ", "BeaconCommittee", autostake)
+		return result
 	}
 	return result
 }
