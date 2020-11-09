@@ -44,14 +44,14 @@ func main() {
 		BOT_CMDS: []Cmd{
 			Cmd{cmd: "/start", descr: "inizializza il bot"},
 			Cmd{cmd: "/help", descr: "elenco comandi bot"},
-			Cmd{cmd: "/altezza", descr: "`/altezza [nodo]` interroga il [nodo] per informazioni blockchain"},
-			Cmd{cmd: "/addnode", descr: "`/addnode [nodo] [urlnodo]` salva o aggiorna url del tuo nodo"},
-			Cmd{cmd: "/delnode", descr: "`/delnode [nodo]` elimina il tuo nodo"},
-			Cmd{cmd: "/listnodes", descr: "`/listnodes` elenca i tuoi nodi"},
-			Cmd{cmd: "/addkey", descr: "`/addkey [alias] [pubkey]` salva o aggiorna public key del tuo miner"},
-			Cmd{cmd: "/delkey", descr: "`/delkey [alias]` elimina la public key"},
-			Cmd{cmd: "/listkeys", descr: "`/listkeys` elenca le tua public keys"},
-			Cmd{cmd: "/status", descr: "`/status [nodo]` elenca lo stato delle tue key di mining"},
+			Cmd{cmd: "/height", descr: "[nodo]: interroga il [nodo] per informazioni blockchain"},
+			Cmd{cmd: "/addnode", descr: "[nodo] [urlnodo]: salva o aggiorna url del tuo nodo"},
+			Cmd{cmd: "/delnode", descr: "[nodo]: elimina il tuo nodo"},
+			Cmd{cmd: "/listnodes", descr: "elenca i tuoi nodi"},
+			Cmd{cmd: "/addkey", descr: "[alias] [pubkey]: salva o aggiorna public key del tuo miner"},
+			Cmd{cmd: "/delkey", descr: "[alias]: elimina la public key"},
+			Cmd{cmd: "/listkeys", descr: "elenca le tua public keys"},
+			Cmd{cmd: "/status", descr: "[nodo]: elenca lo stato delle tue key di mining"},
 		},
 		DEFAULT_NODE_URL: "http://127.0.0.1:9334",
 	}
@@ -73,7 +73,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	for _, cmd := range env.BOT_CMDS {
-		log.Printf("cmd=\"%s\" descr=\"%s\"\n", cmd.cmd, cmd.descr)
+		log.Printf("%s - %s\n", cmd.cmd, cmd.descr)
 	}
 
 	http.ListenAndServeTLS(":8443", "cert.pem", "key.pem", http.HandlerFunc(env.Handler))
@@ -126,14 +126,14 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			log.Println("error in sending reply:", err)
 			return
 		}
-	case env.strCmd(body.Message.Text) == "/altezza":
+	case env.strCmd(body.Message.Text) == "/height":
 		params := strings.Fields(env.removeCmd(body.Message.Text))
 		np := len(params)
 		nodo := ""
 		if np > 0 {
 			nodo = params[0]
 		}
-		log.Println("/altezza", nodo, np, params)
+		log.Println("/height", nodo, np, params)
 		theUrl := env.DEFAULT_NODE_URL
 		if urlNode, err := env.db.GetUrlNode(ChatData.ChatID, nodo); err == nil {
 			theUrl = urlNode.NodeURL
@@ -156,6 +156,9 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			nodestring = fmt.Sprintf("nodo \"%s\"", nodo)
 		}
 		messaggio := fmt.Sprintf("Ecco %s, al %s risulta altezza: %d, epoca: %d/%d", ChatData.Name, nodestring, bbsd.Result.BeaconHeight, bbsd.Result.Epoch, 350-(bbsd.Result.BeaconHeight%350))
+		for shard, height := range bbsd.Result.BestShardHeight {
+			messaggio = fmt.Sprintf("%s\nshard %s heigth %d", shard, height)
+		}
 		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
 			return
