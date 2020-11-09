@@ -8,9 +8,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/robotrongt/incognito_node_bot/src/models"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 type Env struct {
@@ -67,6 +69,9 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Println("SendMessageUrl: " + env.GetSendMessageUrl())
+
+	rand.Seed(time.Now().UnixNano())
+
 	for _, cmd := range env.BOT_CMDS {
 		log.Printf("cmd=\"%s\" descr=\"%s\"\n", cmd.cmd, cmd.descr)
 	}
@@ -475,12 +480,14 @@ type sendMessageReqBody struct {
 
 func (env *Env) StatusChanged(pubkey, oldstat, newstat string) error {
 	log.Printf("Status Changed: %s %s %s", pubkey, oldstat, newstat)
+	icons := []string{"🥳", "👍", "😇", "🤑", "🙌", "💰", "💶", "💵", "💸"}
+	i := rand.Intn(len(icons))
 	chatkeys, err := env.db.GetChatKeysByPubKey(pubkey, 100, 0)
 	if err != nil {
 		return err
 	}
 	for _, chatkey := range *chatkeys {
-		messaggio := fmt.Sprintf("\"%s\" %s -> %s", chatkey.KeyAlias, oldstat, newstat)
+		messaggio := fmt.Sprintf("\"%s\" %s -> %s%s", chatkey.KeyAlias, oldstat, newstat, icons[i])
 		log.Printf("Notify chat: %d %s", chatkey.ChatID, messaggio)
 		if err = env.sayText(chatkey.ChatID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
