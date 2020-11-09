@@ -50,7 +50,7 @@ func main() {
 			Cmd{cmd: "/listkeys", descr: "`/listkeys` elenca le tua public keys"},
 			Cmd{cmd: "/status", descr: "`/status [nodo]` elenca lo stato delle tue key di mining"},
 		},
-		DEFAULT_NODE_URL: "http://95.217.164.210:9334",
+		DEFAULT_NODE_URL: "http://127.0.0.1:9334",
 	}
 
 	log.Println("DBFILE: " + env.DBFILE)
