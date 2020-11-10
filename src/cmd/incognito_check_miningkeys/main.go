@@ -83,10 +83,16 @@ func main() {
 		return
 	}
 	for _, miningkey := range *miningkeys {
-		status := models.GetPubKeyStatus(&bbsd, miningkey.PubKey)
+		status, pki := models.GetPubKeyStatus(&bbsd, miningkey.PubKey)
 		mk := &models.MiningKey{
 			PubKey:     miningkey.PubKey,
 			LastStatus: status,
+		}
+		if pki != nil {
+			mk.LastPRV = pki.PRV
+			mk.IsAutoStake = pki.IsAutoStake
+			mk.Bls = pki.MiningPubKey.Bls
+			mk.Dsa = pki.MiningPubKey.Dsa
 		}
 		env.db.UpdateMiningKey(mk, models.StatusChangeNotifierFunc(env.StatusChanged))
 	}

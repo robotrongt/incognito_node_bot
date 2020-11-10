@@ -10,8 +10,8 @@ import (
 )
 
 type TMiningPubKey struct {
-	bls string
-	dsa string
+	Bls string
+	Dsa string
 }
 type TPubKey struct {
 	IncPubKey    string
@@ -21,6 +21,12 @@ type TPubKeyAuto struct {
 	IncPubKey    string
 	MiningPubKey TMiningPubKey
 	IsAutoStake  bool
+}
+type TPubKeyInfo struct {
+	IncPubKey    string
+	MiningPubKey TMiningPubKey
+	IsAutoStake  bool
+	PRV          int64
 }
 
 type TBeaconStateResult struct {
@@ -98,63 +104,74 @@ func CheckIfPresent(pubkey string, arr *[]TPubKey) bool {
 	return retval
 }
 
-func CheckAutoStake(pubkey string, arr *[]TPubKeyAuto) bool {
-	retval := false
+//ritorna vero se trovato in AutoStake=true più la completa TPubKeyAuto
+func CheckAutoStake(pubkey string, arr *[]TPubKeyAuto) (bool, *TPubKeyAuto) {
 	for _, tpka := range *arr {
 		if tpka.IncPubKey == pubkey {
 			retval := tpka.IsAutoStake
-			return retval
+			pka := tpka
+			return retval, &pka
 		}
 	}
-	return retval
+	return false, nil
 }
 
-func GetPubKeyStatus(bbsd *BBSD, pubkey string) string {
+//ritorna status più puntatore a TPubKeyInfo se trovata attiva
+func GetPubKeyStatus(bbsd *BBSD, pubkey string) (string, *TPubKeyInfo) {
+	pki := TPubKeyInfo{}
+	pki.IncPubKey = pubkey
 	result := "missing"
 	up := "👆"
 	down := "👇"
-	autostake := CheckAutoStake(pubkey, &bbsd.Result.AutoStaking)
+	autostake, tpka := CheckAutoStake(pubkey, &bbsd.Result.AutoStaking)
+	if tpka != nil {
+		pki.IncPubKey = tpka.IncPubKey
+		pki.MiningPubKey = tpka.MiningPubKey
+		pki.IsAutoStake = tpka.IsAutoStake
+		pki.PRV = 0
+	}
+
 	as := down
 	if autostake {
 		as = up
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForNextRandom) {
 		result = fmt.Sprintf("%s%s", "Waiting", as)
-		return result
+		return result, &pki
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForCurrentRandom) {
 		result = fmt.Sprintf("%s%s", "Waiting", as)
-		return result
+		return result, &pki
 	}
 	for shard, arrpk := range bbsd.Result.ShardPendingValidator {
 		if CheckIfPresent(pubkey, &arrpk) {
 			result = fmt.Sprintf("%s shard %s%s", "Pending", shard, as)
-			return result
+			return result, &pki
 		}
 	}
 	for shard, arrpk := range bbsd.Result.ShardCommittee {
 		if CheckIfPresent(pubkey, &arrpk) {
 			result = fmt.Sprintf("%s shard %s%s", "Committee", shard, as)
-			return result
+			return result, &pki
 		}
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateBeaconWaitingForNextRandom) {
 		result = fmt.Sprintf("%s%s", "BeaconWaiting", as)
-		return result
+		return result, &pki
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateBeaconWaitingForCurrentRandom) {
 		result = fmt.Sprintf("%s%s", "BeaconWaiting", as)
-		return result
+		return result, &pki
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.BeaconPendingValidator) {
 		result = fmt.Sprintf("%s%s", "BeaconPending", as)
-		return result
+		return result, &pki
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.BeaconCommittee) {
 		result = fmt.Sprintf("%s%s", "BeaconCommittee", as)
-		return result
+		return result, &pki
 	}
-	return result
+	return result, nil
 }
 
 func GetBeaconBestStateDetail(reqUrl string, bbsd *BBSD) error {

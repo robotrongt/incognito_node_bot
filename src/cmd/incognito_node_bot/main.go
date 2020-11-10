@@ -426,12 +426,19 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		}
 		messaggio := ""
 		for i, pubkey := range *listaChiavi {
-			status := models.GetPubKeyStatus(&bbsd, pubkey.PubKey)
+			status, pki := models.GetPubKeyStatus(&bbsd, pubkey.PubKey)
 			messaggio = fmt.Sprintf("%s\n%d)\t\"%s\"\t%s", messaggio, i+1, pubkey.KeyAlias, status)
 			mk := &models.MiningKey{
 				PubKey:     pubkey.PubKey,
 				LastStatus: status,
 			}
+			if pki != nil {
+				mk.LastPRV = pki.PRV
+				mk.IsAutoStake = pki.IsAutoStake
+				mk.Bls = pki.MiningPubKey.Bls
+				mk.Dsa = pki.MiningPubKey.Dsa
+			}
+
 			env.db.UpdateMiningKey(mk, models.StatusChangeNotifierFunc(env.StatusChanged))
 		}
 		if messaggio == "" {

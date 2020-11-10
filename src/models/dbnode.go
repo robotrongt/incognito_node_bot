@@ -40,8 +40,12 @@ type ChatKey struct {
 }
 
 type MiningKey struct {
-	PubKey     string
-	LastStatus string
+	PubKey      string
+	LastStatus  string
+	LastPRV     int64
+	IsAutoStake bool
+	Bls         string
+	Dsa         string
 }
 
 type StatusChangeNotifierFunc func(pubkey, oldstatus, newstatus string) error
@@ -451,32 +455,34 @@ func (db *DBnode) GetMiningKey(pubkey string) (*MiningKey, error) {
 //Aggiorna/crea MiningKey con chiave `PubKey`
 func (db *DBnode) UpdateMiningKey(miningkey *MiningKey, callback StatusChangeNotifierFunc) error {
 	log.Println("UpdateMiningKey:", miningkey.PubKey, miningkey.LastStatus)
-	mk, e := db.GetMiningKey(miningkey.PubKey)
-	if e != nil {
-		mk = &MiningKey{PubKey: miningkey.PubKey, LastStatus: "missing"}
+	mk, e := db.GetMiningKey(miningkey.PubKey) //prendiamo la MiningKey prima di aggiornarla
+	var precLastStatus = "missing"
+	if e == nil { //se c'era ci salviamo lo stato precedente
+		precLastStatus = mk.LastStatus
 	}
-	var precLastStatus = mk.LastStatus
 	if e != nil { //il record non c'era, lo inseriamo
-		stmt, err := db.DB.Prepare("INSERT INTO `miningkeys`(`PubKey`,`LastStatus`) VALUES (?,?)")
+		precLastStatus = "missing" //non abbiano un LastStatus precedente
+		stmt, err := db.DB.Prepare("INSERT INTO `miningkeys`(`PubKey`,`LastStatus`,`LastPRV`,`IsAutoStake`,`Bls`,`Dsa`) VALUES (?,?,?,?,?,?)")
 		if err != nil {
 			log.Println("UpdateMiningKey error:", err)
 			return err
 		}
 		defer stmt.Close()
 
-		_, err = stmt.Exec(miningkey.PubKey, miningkey.LastStatus)
+		_, err = stmt.Exec(miningkey.PubKey, miningkey.LastStatus, miningkey.LastPRV, miningkey.IsAutoStake, miningkey.Bls, miningkey.Dsa)
 		if err != nil {
 			log.Println("UpdateMiningKey error:", err)
 		}
 	} else { //il record era presente, lo aggiorniamo esclusa la chiave
-		stmt, err := db.DB.Prepare("UPDATE miningkeys SET LastStatus = ? WHERE PubKey = ?")
+		precLastStatus = mk.LastStatus //salviamo il vecchio LastStatus prima di aggiornare
+		stmt, err := db.DB.Prepare("UPDATE miningkeys SET LastStatus = ?, LastPRV = ?, IsAutoStake = ?, Bls = ?, Dsa = ? WHERE PubKey = ?")
 		if err != nil {
 			log.Println("UpdateMiningKey error:", err)
 			return err
 		}
 		defer stmt.Close()
 
-		_, err = stmt.Exec(miningkey.LastStatus, miningkey.PubKey)
+		_, err = stmt.Exec(miningkey.LastStatus, miningkey.LastPRV, miningkey.IsAutoStake, miningkey.Bls, miningkey.Dsa, miningkey.PubKey)
 		if err != nil {
 			log.Println("UpdateMiningKey error:", err)
 		}
@@ -606,7 +612,7 @@ func (db *DBnode) CreateTablesIfNotExists() error {
 		`CREATE TABLE IF NOT EXISTS "chatdata" ( "ChatID" integer NOT NULL, "Name" text, "NameAsked" INTEGER DEFAULT 1, PRIMARY KEY("ChatID") )`,
 		`CREATE TABLE IF NOT EXISTS "urlnodes" ( "UNId" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, "ChatID" INTEGER, "NodeName" TEXT, "NodeURL" TEXT )`,
 		`CREATE TABLE IF NOT EXISTS "chatkeys" ( "ChatID" INTEGER, "KeyAlias" TEXT, "PubKey" TEXT, PRIMARY KEY("ChatID","KeyAlias") )`,
-		`CREATE TABLE IF NOT EXISTS "miningkeys" ( "PubKey" TEXT NOT NULL UNIQUE, "LastStatus" TEXT, PRIMARY KEY("PubKey") )`,
+		`CREATE TABLE IF NOT EXISTS "miningkeys" ( "PubKey" TEXT NOT NULL UNIQUE, "LastStatus" TEXT, "LastPRV" INTEGER, "IsAutoStake" INTEGER, "Bls" TEXT, "Dsa" TEXT, PRIMARY KEY("PubKey") )`,
 	}
 	var err error = nil
 	for _, statement := range create_statements {
