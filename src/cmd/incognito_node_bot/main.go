@@ -432,14 +432,14 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 				PubKey:     pubkey.PubKey,
 				LastStatus: status,
 			}
-			if pki != nil {
+			if pki != nil { //abbiamo info della chiave
 				mk.LastPRV = pki.PRV
 				mk.IsAutoStake = pki.IsAutoStake
 				mk.Bls = pki.MiningPubKey.Bls
 				mk.Dsa = pki.MiningPubKey.Dsa
 				mrfmk := models.MRFMK{}
 				err := models.GetMinerRewardFromMiningKey(env.DEFAULT_FULLNODE_URL, "bls:"+mk.Bls, &mrfmk)
-				if err != nil {
+				if err == nil { //no err, abbiamo anche i PRV
 					mk.LastPRV = mrfmk.Result.PRV
 				}
 			}
@@ -509,8 +509,11 @@ type sendMessageReqBody struct {
 	Text   string `json:"text"`
 }
 
-func (env *Env) StatusChanged(pubkey, oldstat, newstat string) error {
-	log.Printf("Status Changed: %s %s %s", pubkey, oldstat, newstat)
+func (env *Env) StatusChanged(miningkey *models.MiningKey, oldstat string, oldprv int64) error {
+	pubkey := miningkey.PubKey
+	newstat := miningkey.LastStatus
+	newprv := miningkey.LastPRV
+	log.Printf("Status Changed: %s %s %s %fPRV %fPRV", pubkey, oldstat, newstat, float64(newprv)/float64(1000000000), float64(oldprv)/float64(1000000000))
 	icons := []string{"🥳", "👍", "😇", "🤑", "🙌", "💰", "💶", "💵", "💸"}
 	i := rand.Intn(len(icons))
 	chatkeys, err := env.db.GetChatKeysByPubKey(pubkey, 100, 0)
@@ -518,7 +521,7 @@ func (env *Env) StatusChanged(pubkey, oldstat, newstat string) error {
 		return err
 	}
 	for _, chatkey := range *chatkeys {
-		messaggio := fmt.Sprintf("\"%s\" %s -> %s%s", chatkey.KeyAlias, oldstat, newstat, icons[i])
+		messaggio := fmt.Sprintf("\"%s\" %s -> %s%s %fPRV", chatkey.KeyAlias, oldstat, newstat, icons[i], float64(newprv)/float64(1000000000))
 		log.Printf("Notify chat: %d %s", chatkey.ChatID, messaggio)
 		if err = env.sayText(chatkey.ChatID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)

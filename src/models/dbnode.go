@@ -48,7 +48,7 @@ type MiningKey struct {
 	Dsa         string
 }
 
-type StatusChangeNotifierFunc func(pubkey, oldstatus, newstatus string) error
+type StatusChangeNotifierFunc func(miningkey *MiningKey, oldstatus string, oldprv int64) error
 
 //Recupera un record utente o lo crea vuoto se non esiste
 func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
@@ -457,8 +457,10 @@ func (db *DBnode) UpdateMiningKey(miningkey *MiningKey, callback StatusChangeNot
 	log.Printf("UpdateMiningKey: %+v\n", miningkey)
 	mk, e := db.GetMiningKey(miningkey.PubKey) //prendiamo la MiningKey prima di aggiornarla
 	var precLastStatus = "missing"
+	var precPRV int64 = 0
 	if e == nil { //se c'era ci salviamo lo stato precedente e lo aggiorniamo (esclusa la chiave)
 		precLastStatus = mk.LastStatus //salviamo il vecchio LastStatus prima di aggiornare
+		precPRV = mk.LastPRV           //salviamo il vecchio PRV prima di aggiornare
 		stmt, err := db.DB.Prepare("UPDATE miningkeys SET LastStatus = ?, LastPRV = ?, IsAutoStake = ?, Bls = ?, Dsa = ? WHERE PubKey = ?")
 		if err != nil {
 			log.Println("UpdateMiningKey error:", err)
@@ -484,9 +486,9 @@ func (db *DBnode) UpdateMiningKey(miningkey *MiningKey, callback StatusChangeNot
 			log.Println("UpdateMiningKey error:", err)
 		}
 	}
-	if precLastStatus != miningkey.LastStatus { //status changed, must notify
+	if precLastStatus != miningkey.LastStatus || precPRV != miningkey.LastPRV { //status changed, must notify
 		log.Printf("UpdateMiningKey found status change for key %s: from \"%s\" to\" %s\".", miningkey.PubKey, precLastStatus, miningkey.LastStatus)
-		err := callback(miningkey.PubKey, precLastStatus, miningkey.LastStatus)
+		err := callback(miningkey, precLastStatus, precPRV)
 		if err != nil {
 			log.Println("UpdateMiningKey Err in callback: ", err)
 		}

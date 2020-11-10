@@ -268,7 +268,7 @@ func GetMinerRewardFromMiningKey(reqUrl string, key string, mrmfk *MRFMK) error 
 	if err != nil {
 		return err
 	}
-	log.Printf("Result.PRV: %d\n", mrmfk.Result.PRV)
+	log.Printf("Result.PRV: %f\n", float64(mrmfk.Result.PRV)/float64(1000000000))
 	return err
 }
 
