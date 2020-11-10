@@ -88,14 +88,14 @@ func main() {
 			PubKey:     miningkey.PubKey,
 			LastStatus: status,
 		}
-		if pki != nil {
+		if pki != nil { //abbiamo info della chiave
 			mk.LastPRV = pki.PRV
 			mk.IsAutoStake = pki.IsAutoStake
 			mk.Bls = pki.MiningPubKey.Bls
 			mk.Dsa = pki.MiningPubKey.Dsa
 			mrfmk := models.MRFMK{}
 			err := models.GetMinerRewardFromMiningKey(env.DEFAULT_FULLNODE_URL, "bls:"+mk.Bls, &mrfmk)
-			if err != nil {
+			if err == nil { //no err, abbiamo anche i PRV
 				mk.LastPRV = mrfmk.Result.PRV
 			}
 		}
