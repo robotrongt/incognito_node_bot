@@ -92,6 +92,18 @@ type BCI struct {
 	Jsonrpc string
 }
 
+type TMinerReward struct {
+	PRV int64
+}
+type MRFMK struct {
+	Id      int
+	Result  TMinerReward
+	Error   string
+	Params  []string
+	Method  string
+	Jsonrpc string
+}
+
 func CheckIfPresent(pubkey string, arr *[]TPubKey) bool {
 	retval := false
 	for _, tpk := range *arr {
@@ -131,9 +143,9 @@ func GetPubKeyStatus(bbsd *BBSD, pubkey string) (string, *TPubKeyInfo) {
 		pki.PRV = 0
 	}
 
-	as := down
-	if autostake {
-		as = up
+	as := down     //indice in basso
+	if autostake { //se autostake allora
+		as = up //indice in alto
 	}
 	if CheckIfPresent(pubkey, &bbsd.Result.CandidateShardWaitingForNextRandom) {
 		result = fmt.Sprintf("%s%s", "Waiting", as)
@@ -229,6 +241,34 @@ func GetBlockChainInfo(reqUrl string, bci *BCI) error {
 	}
 	log.Printf("Result.ChainName: %s\n", bci.Result.ChainName)
 	log.Printf("Result.ActiveShards: %d\n", bci.Result.ActiveShards)
+	return err
+}
+
+func GetMinerRewardFromMiningKey(reqUrl string, key string, mrmfk *MRFMK) error {
+	myClient := &http.Client{Timeout: 10 * time.Second}
+	reqBody := strings.NewReader(`
+	  {
+		"id": 1,
+		"jsonrpc": "1.0",
+		"method": "getminerrewardfromminingkey",
+		"params": ["` + key + `"]
+	  }
+	`)
+	req, err := http.NewRequest(
+		"GET",
+		reqUrl,
+		reqBody,
+	)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+
+	err = getJson(myClient, req, &mrmfk)
+	if err != nil {
+		return err
+	}
+	log.Printf("Result.PRV: %d\n", mrmfk.Result.PRV)
 	return err
 }
 

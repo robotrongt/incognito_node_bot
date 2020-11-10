@@ -437,6 +437,11 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 				mk.IsAutoStake = pki.IsAutoStake
 				mk.Bls = pki.MiningPubKey.Bls
 				mk.Dsa = pki.MiningPubKey.Dsa
+				mrfmk := models.MRFMK{}
+				err := models.GetMinerRewardFromMiningKey(env.DEFAULT_FULLNODE_URL, "bls:"+mk.Bls, &mrfmk)
+				if err != nil {
+					mk.LastPRV = mrfmk.Result.PRV
+				}
 			}
 
 			env.db.UpdateMiningKey(mk, models.StatusChangeNotifierFunc(env.StatusChanged))

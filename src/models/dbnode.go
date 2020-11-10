@@ -501,7 +501,7 @@ func (db *DBnode) UpdateMiningKey(miningkey *MiningKey, callback StatusChangeNot
 
 //Recupera lista chiavi mining
 func (db *DBnode) GetMiningKeys(limit, offset int) (*[]MiningKey, error) {
-	stmt, err := db.DB.Prepare("SELECT `PubKey`,`LastStatus` FROM `miningkeys` LIMIT ? OFFSET ?")
+	stmt, err := db.DB.Prepare("SELECT `PubKey`,`LastStatus`,`LastPRV`,`IsAutoStake`,`Bls`,`Dsa` FROM `miningkeys` LIMIT ? OFFSET ?")
 	if err != nil {
 		log.Println("GetMiningKeys error:", err)
 		return nil, err
@@ -519,14 +519,18 @@ func (db *DBnode) GetMiningKeys(limit, offset int) (*[]MiningKey, error) {
 	for rows.Next() {
 		var pubkey string
 		var laststatus string
-		err = rows.Scan(&pubkey, &laststatus)
+		var lastprv int64
+		var isautostake bool
+		var bls string
+		var dsa string
+		err = rows.Scan(&pubkey, &laststatus, &lastprv, &isautostake, &bls, &dsa)
 		if err != nil {
 			log.Println("GetMiningKeys error:", err)
 			return nil, err
 		}
 
 		log.Println(pubkey, laststatus)
-		miningkeys = append(miningkeys, MiningKey{PubKey: pubkey, LastStatus: laststatus})
+		miningkeys = append(miningkeys, MiningKey{PubKey: pubkey, LastStatus: laststatus, LastPRV: lastprv, IsAutoStake: isautostake, Bls: bls, Dsa: dsa})
 	}
 	if err := rows.Err(); err != nil {
 		log.Println("GetMiningKeys error:", err)
