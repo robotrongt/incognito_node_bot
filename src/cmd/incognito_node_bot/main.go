@@ -425,9 +425,8 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		messaggio := ""
-		for i, pubkey := range *listaChiavi {
+		for _, pubkey := range *listaChiavi {
 			status, pki := models.GetPubKeyStatus(&bbsd, pubkey.PubKey)
-			messaggio = fmt.Sprintf("%s\n%d)\t\"%s\"\t%s", messaggio, i+1, pubkey.KeyAlias, status)
 			mk := &models.MiningKey{
 				PubKey:     pubkey.PubKey,
 				LastStatus: status,
@@ -443,6 +442,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 					mk.LastPRV = mrfmk.Result.PRV
 				}
 			}
+			messaggio = fmt.Sprintf("%s\n%s %s %fPRV", messaggio, pubkey.KeyAlias, status, float64(mk.LastPRV)/float64(1000000000))
 
 			env.db.UpdateMiningKey(mk, models.StatusChangeNotifierFunc(env.StatusChanged))
 		}
