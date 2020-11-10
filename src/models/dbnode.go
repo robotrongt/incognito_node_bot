@@ -435,13 +435,13 @@ func (db *DBnode) GetMiningKey(pubkey string) (*MiningKey, error) {
 	log.Println("GetMiningKey:", pubkey)
 	retVal := &MiningKey{}
 
-	stmt, err := db.DB.Prepare("SELECT `PubKey`,`LastStatus` FROM `miningkeys` where PubKey = ?")
+	stmt, err := db.DB.Prepare("SELECT `PubKey`,`LastStatus`,`LastPRV`,`IsAutoStake`,`Bls`,`Dsa` FROM `miningkeys` where PubKey = ?")
 	if err != nil {
 		log.Println("GetMiningKey error:", err)
 		return nil, err
 	}
 	defer stmt.Close()
-	err = stmt.QueryRow(pubkey).Scan(&retVal.PubKey, &retVal.LastStatus)
+	err = stmt.QueryRow(pubkey).Scan(&retVal.PubKey, &retVal.LastStatus, &retVal.LastPRV, &retVal.IsAutoStake, &retVal.Bls, &retVal.Dsa)
 	if err != nil {
 		log.Println("GetMiningKey error:", err)
 		return nil, err
