@@ -10,13 +10,16 @@ openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 3560 -sub
 ```
 ## Impostare variabili di ambiente
 Impostare variabile di ambiente con TOKEN di autorizzazione ricevuto dal `@BotFather` ed impostare variabile DBFILE con il nome del file del db da creare/usare
-
+serve anche DEFAUL_NODE_URL da usare se il nodo fornito dall'utente è errato 
+ed anche DEFAULT_FULLNODE_URL da usare per richieste a fullNode
 
 Esempio:
 
 ```bash
 TOKEN=1234567890:ABcdEFghIL_M0noPQrsTUvwXYaBcDeFgHiL
 DBFILE=/srv/incbot.db
+DEFAULT_NODE_URL=http://127.0.0.1:9334
+DEFAULT_FULLNODE_URL=https://mainnet.incognito.org/fullnode
 ```
 
 ## Upload ed attivazione del `Webhook` verso il nostro bot presso telegram 

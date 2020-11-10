@@ -1,4 +1,5 @@
 getbeaconbeststatedetail.json
+*.json
 *.pem
 *.db
 *.old

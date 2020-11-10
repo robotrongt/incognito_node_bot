@@ -17,13 +17,14 @@ import (
 )
 
 type Env struct {
-	DBFILE           string
-	db               *models.DBnode
-	TOKEN            string
-	API              string
-	BOT_NAME         string
-	BOT_CMDS         []Cmd
-	DEFAULT_NODE_URL string
+	DBFILE               string
+	db                   *models.DBnode
+	TOKEN                string
+	API                  string
+	BOT_NAME             string
+	BOT_CMDS             []Cmd
+	DEFAULT_NODE_URL     string
+	DEFAULT_FULLNODE_URL string
 }
 
 type Cmd struct {
@@ -51,10 +52,11 @@ func main() {
 			Cmd{cmd: "/listnodes", descr: "elenca i tuoi nodi"},
 			Cmd{cmd: "/addkey", descr: "[alias] [pubkey]: salva o aggiorna public key del tuo miner"},
 			Cmd{cmd: "/delkey", descr: "[alias]: elimina la public key"},
-			Cmd{cmd: "/listkeys", descr: "elenca le tua public keys"},
+			Cmd{cmd: "/listkeys", descr: "elenca le tue public keys"},
 			Cmd{cmd: "/status", descr: "[nodo]: elenca lo stato delle tue key di mining"},
 		},
-		DEFAULT_NODE_URL: "http://127.0.0.1:9334",
+		DEFAULT_NODE_URL:     os.Getenv("DEFAULT_NODE_URL"),
+		DEFAULT_FULLNODE_URL: os.Getenv("DEFAULT_FULLNODE_URL"),
 	}
 	db, err := models.NewDB("sqlite3", env.DBFILE)
 	if err != nil {
