@@ -454,26 +454,10 @@ func (db *DBnode) GetMiningKey(pubkey string) (*MiningKey, error) {
 
 //Aggiorna/crea MiningKey con chiave `PubKey`
 func (db *DBnode) UpdateMiningKey(miningkey *MiningKey, callback StatusChangeNotifierFunc) error {
-	log.Println("UpdateMiningKey:", miningkey.PubKey, miningkey.LastStatus)
+	log.Printf("UpdateMiningKey: %+v\n", miningkey)
 	mk, e := db.GetMiningKey(miningkey.PubKey) //prendiamo la MiningKey prima di aggiornarla
 	var precLastStatus = "missing"
-	if e == nil { //se c'era ci salviamo lo stato precedente
-		precLastStatus = mk.LastStatus
-	}
-	if e != nil { //il record non c'era, lo inseriamo
-		precLastStatus = "missing" //non abbiano un LastStatus precedente
-		stmt, err := db.DB.Prepare("INSERT INTO `miningkeys`(`PubKey`,`LastStatus`,`LastPRV`,`IsAutoStake`,`Bls`,`Dsa`) VALUES (?,?,?,?,?,?)")
-		if err != nil {
-			log.Println("UpdateMiningKey error:", err)
-			return err
-		}
-		defer stmt.Close()
-
-		_, err = stmt.Exec(miningkey.PubKey, miningkey.LastStatus, miningkey.LastPRV, miningkey.IsAutoStake, miningkey.Bls, miningkey.Dsa)
-		if err != nil {
-			log.Println("UpdateMiningKey error:", err)
-		}
-	} else { //il record era presente, lo aggiorniamo esclusa la chiave
+	if e == nil { //se c'era ci salviamo lo stato precedente e lo aggiorniamo (esclusa la chiave)
 		precLastStatus = mk.LastStatus //salviamo il vecchio LastStatus prima di aggiornare
 		stmt, err := db.DB.Prepare("UPDATE miningkeys SET LastStatus = ?, LastPRV = ?, IsAutoStake = ?, Bls = ?, Dsa = ? WHERE PubKey = ?")
 		if err != nil {
@@ -483,6 +467,19 @@ func (db *DBnode) UpdateMiningKey(miningkey *MiningKey, callback StatusChangeNot
 		defer stmt.Close()
 
 		_, err = stmt.Exec(miningkey.LastStatus, miningkey.LastPRV, miningkey.IsAutoStake, miningkey.Bls, miningkey.Dsa, miningkey.PubKey)
+		if err != nil {
+			log.Println("UpdateMiningKey error:", err)
+		}
+	} else { //il record non c'era, lo inseriamo
+		precLastStatus = "missing" //non abbiano un LastStatus precedente
+		stmt, err := db.DB.Prepare("INSERT INTO `miningkeys`(`PubKey`,`LastStatus`,`LastPRV`,`IsAutoStake`,`Bls`,`Dsa`) VALUES (?,?,?,?,?,?)")
+		if err != nil {
+			log.Println("UpdateMiningKey error:", err)
+			return err
+		}
+		defer stmt.Close()
+
+		_, err = stmt.Exec(miningkey.PubKey, miningkey.LastStatus, miningkey.LastPRV, miningkey.IsAutoStake, miningkey.Bls, miningkey.Dsa)
 		if err != nil {
 			log.Println("UpdateMiningKey error:", err)
 		}
