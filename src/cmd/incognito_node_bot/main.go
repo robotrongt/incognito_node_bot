@@ -439,10 +439,11 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 				mrfmk := models.MRFMK{}
 				err := models.GetMinerRewardFromMiningKey(env.DEFAULT_FULLNODE_URL, "bls:"+mk.Bls, &mrfmk)
 				if err == nil { //no err, abbiamo anche i PRV
-					mk.LastPRV = mrfmk.Result.PRV
+					mk.LastPRV = mrfmk.Result.GetPRV()
 				}
 			}
-			messaggio = fmt.Sprintf("%s\n%s %s %fPRV", messaggio, pubkey.KeyAlias, status, float64(mk.LastPRV)/float64(1000000000))
+			//messaggio = fmt.Sprintf("%s\n%s %s %fPRV", messaggio, pubkey.KeyAlias, status, float64(mk.LastPRV)/float64(1000000000))
+			messaggio = fmt.Sprintf("%s\n%s %s %fPRV", messaggio, pubkey.KeyAlias, status, models.BIG_COINS.GetFloat64Val("PRV", mk.LastPRV))
 
 			env.db.UpdateMiningKey(mk, models.StatusChangeNotifierFunc(env.StatusChanged))
 		}

@@ -96,7 +96,7 @@ func main() {
 			mrfmk := models.MRFMK{}
 			err := models.GetMinerRewardFromMiningKey(env.DEFAULT_FULLNODE_URL, "bls:"+mk.Bls, &mrfmk)
 			if err == nil { //no err, abbiamo anche i PRV
-				mk.LastPRV = mrfmk.Result.PRV
+				mk.LastPRV = mrfmk.Result.GetPRV()
 			}
 		}
 		env.db.UpdateMiningKey(mk, models.StatusChangeNotifierFunc(env.StatusChanged))
@@ -129,7 +129,7 @@ func (env *Env) StatusChanged(miningkey *models.MiningKey, oldstat string, oldpr
 	pubkey := miningkey.PubKey
 	newstat := miningkey.LastStatus
 	newprv := miningkey.LastPRV
-	log.Printf("Status Changed: %s %s %s %fPRV %fPRV", pubkey, oldstat, newstat, float64(newprv)/float64(1000000000), float64(oldprv)/float64(1000000000))
+	log.Printf("Status Changed: %s %s %s %fPRV %fPRV", pubkey, oldstat, newstat, models.BIG_COINS.GetFloat64Val("PRV", newprv), models.BIG_COINS.GetFloat64Val("PRV", oldprv))
 	icons := []string{"🥳", "👍", "😇", "🤑", "🙌", "💰", "💶", "💵", "💸"}
 	i := rand.Intn(len(icons))
 	chatkeys, err := env.db.GetChatKeysByPubKey(pubkey, 100, 0)
@@ -137,7 +137,7 @@ func (env *Env) StatusChanged(miningkey *models.MiningKey, oldstat string, oldpr
 		return err
 	}
 	for _, chatkey := range *chatkeys {
-		messaggio := fmt.Sprintf("\"%s\" %s -> %s%s %fPRV", chatkey.KeyAlias, oldstat, newstat, icons[i], float64(newprv)/float64(1000000000))
+		messaggio := fmt.Sprintf("\"%s\" %s -> %s%s %fPRV", chatkey.KeyAlias, oldstat, newstat, icons[i], models.BIG_COINS.GetFloat64Val("PRV", newprv))
 		log.Printf("Notify chat: %d %s", chatkey.ChatID, messaggio)
 		if err = env.sayText(chatkey.ChatID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
