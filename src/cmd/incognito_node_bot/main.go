@@ -498,8 +498,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 					messaggio = fmt.Sprintf("%s\n%s:\n", messaggio, pubkey.KeyAlias)
 					for _, id := range mrfmk.Result.GetValueIDs() {
 						coin, val := mrfmk.Result.GetNameValuePair(id)
-						mk.LastPRV = mrfmk.Result.GetPRV()
-						messaggio = fmt.Sprintf("%s\t%f%s\n", messaggio, val, coin)
+						messaggio = fmt.Sprintf("%s\t%f%s\n", messaggio, models.BIG_COINS.GetFloat64Val(coin, val), coin)
 					}
 				}
 			}
