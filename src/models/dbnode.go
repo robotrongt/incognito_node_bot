@@ -459,6 +459,9 @@ func (db *DBnode) UpdateMiningKey(miningkey *MiningKey, callback StatusChangeNot
 	var precLastStatus = "missing"
 	var precPRV int64 = 0
 	if e == nil { //se c'era ci salviamo lo stato precedente e lo aggiorniamo (esclusa la chiave)
+		if miningkey.LastPRV == -1 { //non ci stanno passando i PRV, assumiamo che non cambiano
+			miningkey.LastPRV = mk.LastPRV
+		}
 		precLastStatus = mk.LastStatus //salviamo il vecchio LastStatus prima di aggiornare
 		precPRV = mk.LastPRV           //salviamo il vecchio PRV prima di aggiornare
 		stmt, err := db.DB.Prepare("UPDATE miningkeys SET LastStatus = ?, LastPRV = ?, IsAutoStake = ?, Bls = ?, Dsa = ? WHERE PubKey = ?")
@@ -473,6 +476,9 @@ func (db *DBnode) UpdateMiningKey(miningkey *MiningKey, callback StatusChangeNot
 			log.Println("UpdateMiningKey error:", err)
 		}
 	} else { //il record non c'era, lo inseriamo
+		if miningkey.LastPRV == -1 { //non ci stanno passando i PRV, azzeriamo su nuovo record
+			miningkey.LastPRV = 0
+		}
 		precLastStatus = "missing" //non abbiano un LastStatus precedente
 		stmt, err := db.DB.Prepare("INSERT INTO `miningkeys`(`PubKey`,`LastStatus`,`LastPRV`,`IsAutoStake`,`Bls`,`Dsa`) VALUES (?,?,?,?,?,?)")
 		if err != nil {

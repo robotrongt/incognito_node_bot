@@ -97,6 +97,8 @@ func main() {
 			err := models.GetMinerRewardFromMiningKey(env.DEFAULT_FULLNODE_URL, "bls:"+mk.Bls, &mrfmk)
 			if err == nil { //no err, abbiamo anche i PRV
 				mk.LastPRV = mrfmk.Result.GetPRV()
+			} else { //non abbiamo i PRV
+				mk.LastPRV = -1 //segnaliamo che non è da aggiornare
 			}
 		}
 		env.db.UpdateMiningKey(mk, models.StatusChangeNotifierFunc(env.StatusChanged))

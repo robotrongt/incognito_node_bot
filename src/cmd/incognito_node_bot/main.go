@@ -440,6 +440,8 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 				err := models.GetMinerRewardFromMiningKey(env.DEFAULT_FULLNODE_URL, "bls:"+mk.Bls, &mrfmk)
 				if err == nil { //no err, abbiamo anche i PRV
 					mk.LastPRV = mrfmk.Result.GetPRV()
+				} else { //non abbiamo i PRV
+					mk.LastPRV = -1 //segnaliamo che non è da aggiornare
 				}
 			}
 			//messaggio = fmt.Sprintf("%s\n%s %s %fPRV", messaggio, pubkey.KeyAlias, status, float64(mk.LastPRV)/float64(1000000000))
