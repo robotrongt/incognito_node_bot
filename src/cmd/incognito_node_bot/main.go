@@ -491,7 +491,7 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 		messaggio := ""
 		for _, pubkey := range *listaChiavi {
 			mk, errmk := env.db.GetMiningKey(pubkey.PubKey)
-			if errmk != nil { //abbiamo info della chiave
+			if errmk == nil { //abbiamo info della chiave
 				mrfmk := models.MRFMK{}
 				err := models.GetMinerRewardFromMiningKey(env.DEFAULT_FULLNODE_URL, "bls:"+mk.Bls, &mrfmk)
 				if err == nil { //no err, abbiamo anche i Saldi
