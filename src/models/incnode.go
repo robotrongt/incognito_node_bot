@@ -353,7 +353,7 @@ func GetMinerRewardFromMiningKey(reqUrl string, key string, mrmfk *MRFMK) error 
 		return err
 	}
 	//log.Printf("Result.PRV: %f\n", float64(mrmfk.Result.PRV)/float64(1000000000))
-	log.Printf("Result.PRV: %f\n", mrmfk.Result.GetPRV())
+	log.Printf("Result.PRV: %.9f\n", BIG_COINS.GetFloat64Val("PRV", mrmfk.Result.GetPRV()))
 	return err
 }
 
