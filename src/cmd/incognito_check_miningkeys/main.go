@@ -95,7 +95,7 @@ func main() {
 			mk.Dsa = pki.MiningPubKey.Dsa
 			mrfmk := models.MRFMK{}
 			err := models.GetMinerRewardFromMiningKey(env.DEFAULT_FULLNODE_URL, "bls:"+mk.Bls, &mrfmk)
-			if err == nil { //no err, abbiamo anche i PRV
+			if err == nil { //no err, abbiamo anche i Saldi
 				mk.LastPRV = mrfmk.Result.GetPRV()
 			} else { //non abbiamo i PRV
 				mk.LastPRV = -1 //segnaliamo che non è da aggiornare

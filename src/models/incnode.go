@@ -142,6 +142,14 @@ type BCI struct {
 
 type TMinerReward map[string]int64
 
+func (mr *TMinerReward) GetValueIDs() []string {
+	retval := []string{}
+	for id := range *mr {
+		retval = append(retval, id)
+	}
+	return retval
+}
+
 func (mr *TMinerReward) GetValueNames() []string {
 	retval := []string{}
 	for id := range *mr {

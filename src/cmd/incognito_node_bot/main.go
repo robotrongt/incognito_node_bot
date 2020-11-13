@@ -54,6 +54,7 @@ func main() {
 			Cmd{cmd: "/delkey", descr: "[alias]: elimina la public key"},
 			Cmd{cmd: "/listkeys", descr: "elenca le tue public keys"},
 			Cmd{cmd: "/status", descr: "[nodo]: elenca lo stato delle tue key di mining"},
+			Cmd{cmd: "/balance", descr: "[alias_chiave]: reward accurato della chiave di mining"},
 		},
 		DEFAULT_NODE_URL:     os.Getenv("DEFAULT_NODE_URL"),
 		DEFAULT_FULLNODE_URL: os.Getenv("DEFAULT_FULLNODE_URL"),
@@ -453,6 +454,60 @@ func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
 			messaggio = "Non trovo nulla!"
 		}
 		if err = env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
+
+	case env.strCmd(body.Message.Text) == "/balance":
+		params := strings.Fields(env.removeCmd(body.Message.Text))
+		np := len(params)
+		key := ""
+		if np > 0 {
+			key = params[0]
+		}
+		log.Println("/balance", key, np, params)
+		listaChiavi := &[]models.ChatKey{}
+		if key == "" { //chiave non specificata, prendiamo tutte
+			var err error
+			listaChiavi, err = env.db.GetChatKeys(body.Message.Chat.ID, 100, 0)
+			if err != nil {
+				messaggio := fmt.Sprint("Problema recuperando le chiavi: ", err)
+				if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+					log.Println("error in sending reply:", err)
+				}
+				return
+			}
+		} else { //chiave selezionata, usiamo quella
+			chiave, err := env.db.GetChatKey(body.Message.Chat.ID, key)
+			if err != nil {
+				messaggio := fmt.Sprint("Problema recuperando la chiave: alias=", key, " err=", err)
+				if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+					log.Println("error in sending reply:", err)
+				}
+				return
+			}
+			*listaChiavi = append(*listaChiavi, *chiave)
+		}
+		messaggio := ""
+		for _, pubkey := range *listaChiavi {
+			mk, errmk := env.db.GetMiningKey(pubkey.PubKey)
+			if errmk != nil { //abbiamo info della chiave
+				mrfmk := models.MRFMK{}
+				err := models.GetMinerRewardFromMiningKey(env.DEFAULT_FULLNODE_URL, "bls:"+mk.Bls, &mrfmk)
+				if err == nil { //no err, abbiamo anche i Saldi
+					messaggio = fmt.Sprintf("%s\n%s:\n", messaggio, pubkey.KeyAlias)
+					for _, id := range mrfmk.Result.GetValueIDs() {
+						coin, val := mrfmk.Result.GetNameValuePair(id)
+						mk.LastPRV = mrfmk.Result.GetPRV()
+						messaggio = fmt.Sprintf("%s\t%f%s\n", messaggio, val, coin)
+					}
+				}
+			}
+		}
+		if messaggio == "" {
+			messaggio = "Non trovo nulla!"
+		}
+		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
 			return
 		}
