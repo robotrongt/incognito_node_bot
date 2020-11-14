@@ -18,6 +18,7 @@ type Env struct {
 	DBFILE               string
 	db                   *models.DBnode
 	TOKEN                string
+	TGTOKEN              string
 	API                  string
 	BOT_NAME             string
 	BOT_CMDS             []Cmd
@@ -39,6 +40,7 @@ func main() {
 		DBFILE:   os.Getenv("DBFILE"),
 		db:       nil,
 		TOKEN:    os.Getenv("TOKEN"),
+		TGTOKEN:  os.Getenv("TGTOKEN"),
 		API:      "https://api.telegram.org/bot",
 		BOT_NAME: "@incognito_node_bot",
 		BOT_CMDS: []Cmd{
@@ -52,6 +54,7 @@ func main() {
 			Cmd{cmd: "/delkey", descr: "[alias]: elimina la public key"},
 			Cmd{cmd: "/listkeys", descr: "elenca le tue public keys"},
 			Cmd{cmd: "/status", descr: "[nodo]: elenca lo stato delle tue key di mining"},
+			Cmd{cmd: "/balance", descr: "[alias_chiave]: reward accurato della chiave di mining"},
 		},
 		DEFAULT_NODE_URL:     os.Getenv("DEFAULT_NODE_URL"),
 		DEFAULT_FULLNODE_URL: os.Getenv("DEFAULT_FULLNODE_URL"),

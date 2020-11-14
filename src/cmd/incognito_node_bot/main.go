@@ -20,6 +20,7 @@ type Env struct {
 	DBFILE               string
 	db                   *models.DBnode
 	TOKEN                string
+	TGTOKEN              string
 	API                  string
 	BOT_NAME             string
 	BOT_CMDS             []Cmd
@@ -41,6 +42,7 @@ func main() {
 		DBFILE:   os.Getenv("DBFILE"),
 		db:       nil,
 		TOKEN:    os.Getenv("TOKEN"),
+		TGTOKEN:  os.Getenv("TGTOKEN"),
 		API:      "https://api.telegram.org/bot",
 		BOT_NAME: "@incognito_node_bot",
 		BOT_CMDS: []Cmd{
@@ -79,8 +81,9 @@ func main() {
 	for _, cmd := range env.BOT_CMDS {
 		log.Printf("%s - %s\n", cmd.cmd, cmd.descr)
 	}
-
-	http.ListenAndServeTLS(":8443", "cert.pem", "key.pem", http.HandlerFunc(env.Handler))
+	http.HandleFunc("/", env.RootHandler)
+	http.HandleFunc("/telegram"+env.TGTOKEN+"/", env.TelegramHandler)
+	log.Fatal(http.ListenAndServeTLS(":8443", "cert.pem", "key.pem", nil))
 }
 
 // Create a struct that mimics the webhook response body
@@ -94,8 +97,14 @@ type webhookReqBody struct {
 	} `json:"message"`
 }
 
+// This handler is called everytime someone requests any other page and writes on console
+func RootHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hi! Nice request %s!", r.URL.Path)
+	log.Printf("Someone requested %s", r.URL.Path)
+}
+
 // This handler is called everytime telegram sends us a webhook event
-func (env *Env) Handler(res http.ResponseWriter, req *http.Request) {
+func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 	// First, decode the JSON response body
 	body := &webhookReqBody{}
 	if err := json.NewDecoder(req.Body).Decode(body); err != nil {
