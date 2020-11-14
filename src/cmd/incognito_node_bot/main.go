@@ -98,7 +98,7 @@ type webhookReqBody struct {
 }
 
 // This handler is called everytime someone requests any other page and writes on console
-func RootHandler(w http.ResponseWriter, r *http.Request) {
+func (env *Env) RootHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hi! Nice request %s!", r.URL.Path)
 	log.Printf("Someone requested %s", r.URL.Path)
 }
