@@ -100,7 +100,7 @@ type webhookReqBody struct {
 // This handler is called everytime someone requests any other page and writes on console
 func (env *Env) RootHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hi! Nice request %s!", r.URL.Path)
-	log.Printf("IP:%s (for: %s) requested %s", r.RemoteAddr, r.Header.Get("X-Forwarded-For"), r.URL.Path)
+	log.Printf("IP:%s (for: %s) (ua: %s) requested %s", r.RemoteAddr, r.Header.Get("X-Forwarded-For"), r.UserAgent(), r.URL.Path)
 }
 
 // This handler is called everytime telegram sends us a webhook event
