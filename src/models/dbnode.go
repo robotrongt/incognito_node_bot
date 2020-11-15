@@ -165,7 +165,7 @@ func (db *DBnode) GetNotify(ChatID int64) bool {
 	log.Println("GetNotify:", ChatID)
 	retVal := false
 
-	stmt, err := db.DB.Prepare("SELECT `Notify` FROM `chatdata` where ChaitID = ?")
+	stmt, err := db.DB.Prepare("SELECT `Notify` FROM `chatdata` where ChatID = ?")
 	if err != nil {
 		log.Println("GetNotify error:", err)
 		return false
@@ -187,7 +187,7 @@ func (db *DBnode) ChangeNotify(ChatID int64) bool {
 	oldNotify := db.GetNotify(ChatID)
 	newNotify := !oldNotify
 
-	stmt, err := db.DB.Prepare("UPDATE `chatdata` SET `Notify` = ? WHERE `ChaitID` = ?")
+	stmt, err := db.DB.Prepare("UPDATE `chatdata` SET `Notify` = ? WHERE `ChatID` = ?")
 	if err != nil {
 		log.Println("GetNotify error:", err)
 		return false
