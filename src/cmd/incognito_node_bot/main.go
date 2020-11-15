@@ -57,6 +57,7 @@ func main() {
 			Cmd{cmd: "/listkeys", descr: "elenca le tue public keys"},
 			Cmd{cmd: "/status", descr: "[nodo]: elenca lo stato delle tue key di mining"},
 			Cmd{cmd: "/balance", descr: "[alias_chiave]: reward accurato della chiave di mining"},
+			Cmd{cmd: "/notify", descr: "turns notifications off or on"},
 		},
 		DEFAULT_NODE_URL:     os.Getenv("DEFAULT_NODE_URL"),
 		DEFAULT_FULLNODE_URL: os.Getenv("DEFAULT_FULLNODE_URL"),
@@ -519,7 +520,13 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 			log.Println("error in sending reply:", err)
 			return
 		}
-
+	case env.strCmd(body.Message.Text) == "/notify":
+		newNotify := env.db.ChangeNotify(body.Message.Chat.ID)
+		messaggio := fmt.Sprintf("Notify is now %t.", newNotify)
+		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
 	default:
 		if err := env.sayText(body.Message.Chat.ID, env.printBOT_CMDS()); err != nil {
 			log.Println("error in sending reply:", err)

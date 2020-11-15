@@ -24,6 +24,7 @@ type ChatUser struct {
 	ChatID    int64
 	Name      string
 	NameAsked bool
+	Notify    bool
 }
 
 type UrlNode struct {
@@ -52,7 +53,7 @@ type StatusChangeNotifierFunc func(miningkey *MiningKey, oldstatus string, oldpr
 
 //Recupera un record utente o lo crea vuoto se non esiste
 func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
-	retVal := &ChatUser{chatID, "", true}
+	retVal := &ChatUser{chatID, "", true, true}
 
 	stmt, err := db.DB.Prepare("select Name, NameAsked from chatdata where ChatID = ?")
 	if err != nil {
@@ -81,10 +82,11 @@ func (db *DBnode) CreateUserByChatID(chatID int64) (*ChatUser, error) {
 		ChatID:    chatID,
 		Name:      "Sconosciuto",
 		NameAsked: true,
+		Notify:    true,
 	}
 
 	log.Println("CreateUserByChatID:", retVal.ChatID, retVal.Name, retVal.NameAsked)
-	stmt, err := db.DB.Prepare("insert into chatdata(ChatID, Name, NameAsked) values (?, ?, ?)")
+	stmt, err := db.DB.Prepare("insert into chatdata(ChatID, Name, NameAsked, Notify) values (?, ?, ?, ?)")
 	if err != nil {
 		log.Println("CreateUserByChatID error:", err)
 		return nil, err
@@ -92,7 +94,7 @@ func (db *DBnode) CreateUserByChatID(chatID int64) (*ChatUser, error) {
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(retVal.ChatID, retVal.Name, retVal.NameAsked)
+	_, err = stmt.Exec(retVal.ChatID, retVal.Name, retVal.NameAsked, retVal.Notify)
 	if err != nil {
 		log.Println("CreateUserByChatID error:", err)
 	}
@@ -103,7 +105,7 @@ func (db *DBnode) CreateUserByChatID(chatID int64) (*ChatUser, error) {
 //Aggiorna utente
 func (db *DBnode) UpdateUser(user *ChatUser) error {
 	log.Println("UpdateUser:", user.ChatID, user.Name, user.NameAsked)
-	stmt, err := db.DB.Prepare("UPDATE chatdata SET Name = ?, NameAsked = ? WHERE ChatID = ?")
+	stmt, err := db.DB.Prepare("UPDATE chatdata SET Name = ?, NameAsked = ?, Notify = ? WHERE ChatID = ?")
 	if err != nil {
 		log.Println("UpdateUser error:", err)
 		return err
@@ -111,7 +113,7 @@ func (db *DBnode) UpdateUser(user *ChatUser) error {
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(user.Name, user.NameAsked, user.ChatID)
+	_, err = stmt.Exec(user.Name, user.NameAsked, user.Notify, user.ChatID)
 	if err != nil {
 		log.Println("UpdateUser error:", err)
 	}
@@ -121,7 +123,7 @@ func (db *DBnode) UpdateUser(user *ChatUser) error {
 
 //Recupera lista utenti
 func (db *DBnode) GetUsersList(limit, offset int) (*[]ChatUser, error) {
-	stmt, err := db.DB.Prepare("SELECT ChatID, Name, NameAsked FROM chatdata LIMIT ? OFFSET ?")
+	stmt, err := db.DB.Prepare("SELECT ChatID, Name, NameAsked, Notify FROM chatdata LIMIT ? OFFSET ?")
 	if err != nil {
 		log.Println("GetUsersList error:", err)
 		return nil, err
@@ -140,14 +142,15 @@ func (db *DBnode) GetUsersList(limit, offset int) (*[]ChatUser, error) {
 		var chatid int64
 		var name string
 		var nameasked bool
-		err = rows.Scan(&chatid, &name, &nameasked)
+		var notify bool
+		err = rows.Scan(&chatid, &name, &nameasked, &notify)
 		if err != nil {
 			log.Println("GetUsersList error:", err)
 			return nil, err
 		}
 
 		log.Println(chatid, name, nameasked)
-		chatusers = append(chatusers, ChatUser{ChatID: chatid, Name: name, NameAsked: nameasked})
+		chatusers = append(chatusers, ChatUser{ChatID: chatid, Name: name, NameAsked: nameasked, Notify: notify})
 	}
 	if err := rows.Err(); err != nil {
 		log.Println("GetUsersList error:", err)
@@ -155,6 +158,50 @@ func (db *DBnode) GetUsersList(limit, offset int) (*[]ChatUser, error) {
 	}
 
 	return &chatusers, err
+}
+
+//Torna Notify boolean per ChatID
+func (db *DBnode) GetNotify(ChatID int64) bool {
+	log.Println("GetNotify:", ChatID)
+	retVal := false
+
+	stmt, err := db.DB.Prepare("SELECT `Notify` FROM `chatdata` where ChaitID = ?")
+	if err != nil {
+		log.Println("GetNotify error:", err)
+		return false
+	}
+	defer stmt.Close()
+	err = stmt.QueryRow(ChatID).Scan(&retVal)
+	if err != nil {
+		log.Println("GetNotify error:", err)
+		return false
+	} else {
+		return retVal
+	}
+	return false
+}
+
+//Cambia Notify per ChatID (ritorna il Notify impostato oppure false se non riesce)
+func (db *DBnode) ChangeNotify(ChatID int64) bool {
+	log.Println("ChangeNotify:", ChatID)
+	oldNotify := db.GetNotify(ChatID)
+	newNotify := !oldNotify
+
+	stmt, err := db.DB.Prepare("UPDATE `chatdata` SET `Notify` = ? WHERE `ChaitID` = ?")
+	if err != nil {
+		log.Println("GetNotify error:", err)
+		return false
+	}
+
+	defer stmt.Close()
+	_, err = stmt.Exec(newNotify, ChatID)
+	if err != nil {
+		log.Println("ChangeNotify error:", err)
+		return false
+	} else {
+		return newNotify
+	}
+	return false
 }
 
 //Recupera un Nodo della Chat
@@ -620,7 +667,7 @@ func (db *DBnode) GetFionaText() string {
 
 func (db *DBnode) CreateTablesIfNotExists() error {
 	var create_statements = [...]string{
-		`CREATE TABLE IF NOT EXISTS "chatdata" ( "ChatID" integer NOT NULL, "Name" text, "NameAsked" INTEGER DEFAULT 1, PRIMARY KEY("ChatID") )`,
+		`CREATE TABLE IF NOT EXISTS "chatdata" ( "ChatID" integer NOT NULL, "Name" text, "NameAsked" INTEGER DEFAULT 1, "Notify" INTEGER DEFAULT 1, PRIMARY KEY("ChatID"))`,
 		`CREATE TABLE IF NOT EXISTS "urlnodes" ( "UNId" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, "ChatID" INTEGER, "NodeName" TEXT, "NodeURL" TEXT )`,
 		`CREATE TABLE IF NOT EXISTS "chatkeys" ( "ChatID" INTEGER, "KeyAlias" TEXT, "PubKey" TEXT, PRIMARY KEY("ChatID","KeyAlias") )`,
 		`CREATE TABLE IF NOT EXISTS "miningkeys" ( "PubKey" TEXT NOT NULL UNIQUE, "LastStatus" TEXT, "LastPRV" INTEGER, "IsAutoStake" INTEGER, "Bls" TEXT, "Dsa" TEXT, PRIMARY KEY("PubKey") )`,
