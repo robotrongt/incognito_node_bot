@@ -159,6 +159,7 @@ func (env *Env) StatusChanged(miningkey *models.MiningKey, oldstat string, oldpr
 }
 
 func (env *Env) sayText(chatID int64, text string) error {
+	myClient := &http.Client{Timeout: 10 * time.Second}
 	// Create the request body struct
 	reqBody := &sendMessageReqBody{
 		ChatID: chatID,
@@ -170,15 +171,25 @@ func (env *Env) sayText(chatID int64, text string) error {
 	if err != nil {
 		return err
 	}
+	var req *http.Request
+	req, err = http.NewRequest(
+		"POST",
+		env.GetSendMessageUrl(),
+		bytes.NewBuffer(reqBytes),
+	)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	// Send a post request with your token
-	res, err := http.Post(env.GetSendMessageUrl(), "application/json", bytes.NewBuffer(reqBytes))
+	res, err := myClient.Do(req)
+	defer res.Body.Close()
 	if err != nil {
 		return err
 	}
 	if res.StatusCode != http.StatusOK {
 		return errors.New("unexpected status" + res.Status)
 	}
-
 	return nil
 }
 
