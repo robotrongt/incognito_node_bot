@@ -3,5 +3,6 @@ getbeaconbeststatedetail.json
 *.pem
 *.db
 *.old
+*.swp
 src/cmd/incognito_node_bot/incognito_node_bot
 src/cmd/incognito_check_miningkeys/incognito_check_miningkeys
