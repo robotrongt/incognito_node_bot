@@ -6,3 +6,4 @@ getbeaconbeststatedetail.json
 *.swp
 src/cmd/incognito_node_bot/incognito_node_bot
 src/cmd/incognito_check_miningkeys/incognito_check_miningkeys
+src/cmd/incognito_lottery_extract/incognito_lottery_extract

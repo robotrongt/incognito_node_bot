@@ -59,6 +59,7 @@ func main() {
 			Cmd{cmd: "/status", descr: "[nodo]: elenca lo stato delle tue key di mining"},
 			Cmd{cmd: "/balance", descr: "[alias_chiave]: reward accurato della chiave di mining"},
 			Cmd{cmd: "/notify", descr: "turns notifications off or on"},
+			Cmd{cmd: "/lstickets", descr: "[aaaa-mm] lists all lottery tickets"},
 		},
 		DEFAULT_NODE_URL:     os.Getenv("DEFAULT_NODE_URL"),
 		DEFAULT_FULLNODE_URL: os.Getenv("DEFAULT_FULLNODE_URL"),
@@ -527,6 +528,63 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 		if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 			log.Println("error in sending reply:", err)
 			return
+		}
+	case env.strCmd(body.Message.Text) == "/lstickets":
+		params := strings.Fields(env.removeCmd(body.Message.Text))
+		np := len(params)
+		var errParse error = nil
+		var starttm = time.Now()
+		if np == 1 {
+			starttm, errParse = time.ParseInLocation("2006-01-02 15:04:05", params[0]+"-01 00:00:00", time.Now().Location())
+			if errParse != nil {
+				log.Println("errParse:", errParse)
+				messaggio := fmt.Sprintf("Problems with /lsnotify command params, need aaaa-mm but found '%s'.", env.removeCmd(body.Message.Text))
+				if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+					log.Println("error in sending reply:", err)
+				}
+				return
+			}
+		} else if np > 1 {
+			messaggio := fmt.Sprintf("Problems with /lsnotify command params, need aaaa-mm but found '%s'.", env.removeCmd(body.Message.Text))
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+				return
+			}
+		}
+		y, m, _ := starttm.Date()
+		endtm := time.Date(y, m+1, 1, 0, 0, 0, 0, starttm.Location())
+		startts := models.MakeTSFromTime(starttm)
+		endts := models.MakeTSFromTime(endtm)
+		log.Println("/lstickets", models.GetTSString(startts), models.GetTSString(endts))
+
+		lotterychats, err := env.db.GetLotteryIDS(body.Message.Chat.ID)
+		if err != nil {
+			log.Println("/lsnotify err:", err)
+			messaggio := fmt.Sprintf("Problems with /lsnotify GetLotteryIDS '%v'.", err)
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+			}
+			return
+		}
+		for _, lotterychat := range lotterychats {
+			messaggio := fmt.Sprintf("Lottery %d.\n", lotterychat.LOId)
+			messaggio = fmt.Sprintf(" Listing tickets from %s to %s.\n", models.GetTSString(startts), models.GetTSString(endts))
+			lotterytickets, err := env.db.GetLotteryTickets(lotterychat.LOId, startts, endts)
+			if err != nil {
+				log.Println("/lsnotify err:", err)
+				messaggio := fmt.Sprintf("Problems with /lsnotify GetLotteryTickets '%v'.", err)
+				if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+					log.Println("error in sending reply:", err)
+				}
+				return
+			}
+			for _, lotteryticket := range lotterytickets {
+				messaggio = fmt.Sprintf("  %v\n", lotteryticket)
+			}
+			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
+				log.Println("error in sending reply:", err)
+				return
+			}
 		}
 	default:
 		if err := env.sayText(body.Message.Chat.ID, env.printBOT_CMDS()); err != nil {

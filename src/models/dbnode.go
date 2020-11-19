@@ -160,6 +160,45 @@ func (db *DBnode) AddLotteryTickets(ts int64, pubkey string) ([]LotteryKey, erro
 	return lotterykeys, nil
 }
 
+// list Lottery tickets by period starts endts for a LOId
+// and returns slice of LotteryTickets (or err)
+func (db *DBnode) GetLotteryTickets(loid, startts, endts int64) ([]LotteryTicket, error) {
+	lotterytickets := []LotteryTicket{}
+	stmt, err := db.DB.Prepare("SELECT LOId, PubKey, Timestamp, Extracted FROM lotterytickets WHERE LOId = ? AND Timestamp >= ? AND Timestamp < ?")
+	if err != nil {
+		log.Println("GetLotteryTickets error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := &sql.Rows{}
+	rows, err = stmt.Query(loid, startts, endts)
+	if err != nil {
+		log.Println("GetLotteryTickets error:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var loid int64
+		var pubkey string
+		var timestamp int64
+		var extracted int64
+
+		err = rows.Scan(&loid, &pubkey, &timestamp, &extracted)
+		if err != nil {
+			log.Println("GetLotteryTickets error:", err)
+			return nil, err
+		}
+		lotterytickets = append(lotterytickets, LotteryTicket{LOId: loid, PubKey: pubkey, Timestamp: timestamp, Extracted: extracted})
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("GetLotteryTickets error:", err)
+		return nil, err
+	}
+
+	return lotterytickets, nil
+}
+
 // returns the slice of LotteryChat (or err) for the given LotteryID (LOId)
 func (db *DBnode) GetLotteryChatIDS(loid int64) ([]LotteryChat, error) {
 	lotterychats := []LotteryChat{}
@@ -193,7 +232,41 @@ func (db *DBnode) GetLotteryChatIDS(loid int64) ([]LotteryChat, error) {
 	}
 
 	return lotterychats, nil
+}
 
+// returns the slice of LotteryChat (or err) for the given ChatID
+func (db *DBnode) GetLotteryIDS(chatid int64) ([]LotteryChat, error) {
+	lotterychats := []LotteryChat{}
+	stmt, err := db.DB.Prepare("SELECT LOId, ChatID FROM lotterychats WHERE ChatID = ?")
+	if err != nil {
+		log.Println("GetLotteryIDS error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := &sql.Rows{}
+	rows, err = stmt.Query(chatid)
+	if err != nil {
+		log.Println("GetLotteryIDS error:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var loid int64
+		var chatid int64
+		err = rows.Scan(&loid, &chatid)
+		if err != nil {
+			log.Println("GetLotteryIDS error:", err)
+			return nil, err
+		}
+		lotterychats = append(lotterychats, LotteryChat{LOId: loid, ChatID: chatid})
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("GetLotteryIDS error:", err)
+		return nil, err
+	}
+
+	return lotterychats, nil
 }
 
 // returns the slice of LotteryKey (or err) for the given pubkey
@@ -931,7 +1004,7 @@ func (db *DBnode) CreateTablesIfNotExists() error {
 	}
 	var err error = nil
 	for _, statement := range create_statements {
-		log.Println(statement)
+		//log.Println(statement)
 		_, err = db.DB.Exec(statement)
 		if err != nil {
 			log.Println("CreateTablesIfNotExists error:", err)

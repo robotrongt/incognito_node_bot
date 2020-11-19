@@ -58,6 +58,7 @@ func main() {
 			Cmd{cmd: "/status", descr: "[nodo]: elenca lo stato delle tue key di mining"},
 			Cmd{cmd: "/balance", descr: "[alias_chiave]: reward accurato della chiave di mining"},
 			Cmd{cmd: "/notify", descr: "turns notifications off or on"},
+			Cmd{cmd: "/lstickets", descr: "[aaaa-mm] lists all lottery tickets"},
 		},
 		DEFAULT_NODE_URL:     os.Getenv("DEFAULT_NODE_URL"),
 		DEFAULT_FULLNODE_URL: os.Getenv("DEFAULT_FULLNODE_URL"),
