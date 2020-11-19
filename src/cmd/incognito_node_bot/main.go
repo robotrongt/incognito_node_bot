@@ -584,7 +584,7 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 					lotterykey := env.db.GetLotteryKeyByKey(lotteryticket.LOId, lotteryticket.PubKey)
 					chatkey = &models.ChatKey{lotterychat.ChatID, lotterykey.DefaultAlias, lotterykey.PubKey}
 				}
-				messaggio = fmt.Sprintf("%s\n  %s ", messaggio, chatkey.KeyAlias, models.GetTSString(lotteryticket.Timestamp))
+				messaggio = fmt.Sprintf("%s\n  %s %s", messaggio, chatkey.KeyAlias, models.GetTSString(lotteryticket.Timestamp))
 			}
 			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 				log.Println("error in sending reply:", err)
