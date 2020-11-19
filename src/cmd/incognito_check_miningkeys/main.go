@@ -5,13 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
-	"github.com/robotrongt/incognito_node_bot/src/models"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/robotrongt/incognito_node_bot/src/models"
 )
 
 type Env struct {
@@ -131,6 +133,15 @@ type sendMessageReqBody struct {
 	Text   string `json:"text"`
 }
 
+func (env *Env) NotifyTicket(ts int64, chatuser *models.ChatUser, chatkey *models.ChatKey) error {
+	tmstring := models.GetTSString(ts)
+	log.Printf("%d \"%s\" %t->New Ticket for %s %s\n", chatuser.ChatID, chatuser.Name, chatuser.Notify, chatkey.KeyAlias, tmstring)
+	messaggio := fmt.Sprintf("New ticket for %s->%s", chatkey.KeyAlias, tmstring)
+	if err := env.sayText(chatkey.ChatID, messaggio); err != nil {
+		log.Println("error in sending reply:", err)
+	}
+	return nil
+}
 func (env *Env) StatusChanged(miningkey *models.MiningKey, oldstat string, oldprv int64) error {
 	pubkey := miningkey.PubKey
 	newstat := miningkey.LastStatus
@@ -138,6 +149,20 @@ func (env *Env) StatusChanged(miningkey *models.MiningKey, oldstat string, oldpr
 	log.Printf("Status Changed: %s %s %s %fPRV %fPRV", pubkey, oldstat, newstat, models.BIG_COINS.GetFloat64Val("PRV", newprv), models.BIG_COINS.GetFloat64Val("PRV", oldprv))
 	icons := []string{"🥳", "👍", "😇", "🤑", "🙌", "💰", "💶", "💵", "💸"}
 	i := rand.Intn(len(icons))
+
+	newst := strings.ToLower(strings.TrimLeft(newstat, " "))
+	if strings.HasPrefix(newst, "committe") && newprv >= oldprv { // this is a new round
+		var tm = time.Now()
+		ts := models.MakeTSFromTime(tm)
+		lotterykeys, err := env.db.AddLotteryTickets(ts, pubkey)
+		if err != nil {
+			log.Println("Status Changed: error AddLotteryTickets:", err)
+		}
+		err = env.db.NotifyAllLotteryUsersTicket(ts, lotterykeys, env.NotifyTicket)
+		if err != nil {
+			log.Println("Status Changed: error NotifyAllLotteryUsersTicket:", err)
+		}
+	}
 	chatkeys, err := env.db.GetChatKeysByPubKey(pubkey, 100, 0)
 	if err != nil {
 		return err

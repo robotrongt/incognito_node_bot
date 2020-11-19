@@ -7,6 +7,26 @@ import (
 	"time"
 )
 
+const TimeStampFormat = "2006-01-02 15:04:05 MST"
+
+func MakeTSFromTime(t time.Time) int64 {
+	return t.Unix()
+}
+
+func MakeTSFromString(t string) (int64, error) {
+	res, err := time.Parse(TimeStampFormat, t)
+	if err != nil {
+		return -1, err
+	}
+	return MakeTSFromTime(res), nil
+}
+func GetTSTime(ts int64) time.Time {
+	return time.Unix(ts, 0)
+}
+func GetTSString(ts int64) string {
+	return GetTSTime(ts).Format(TimeStampFormat)
+}
+
 type DBnode struct {
 	DB *sql.DB
 }
@@ -49,7 +69,168 @@ type MiningKey struct {
 	Dsa         string
 }
 
+type Lottery struct {
+	LOId               int64
+	ChatID             int64
+	LotteryName        string
+	LotteryDescription string
+}
+type LotteryExtraction struct {
+	LOId      int64
+	Timestamp int64
+	Nonce     int64
+	BTCBlock  int64
+}
+type LotteryTicket struct {
+	LOId      int64
+	PubKey    string
+	Timestamp int64
+	Extracted int64
+}
+type LotteryKey struct {
+	LOId         int64
+	PubKey       string
+	DefaultAlias string
+}
+type LotteryChat struct {
+	LOId   int64
+	ChatID int64
+}
+
 type StatusChangeNotifierFunc func(miningkey *MiningKey, oldstatus string, oldprv int64) error
+type LotteryUserTicketNotifierFunc func(ts int64, chatuser *ChatUser, chatkey *ChatKey) error //Signals addition of a new ticket of a key in Users of the Lottery
+
+// Calls the LotteryUserTicketNotifierFunc for all the ChatUsers that knows that ChatKey
+func (db *DBnode) NotifyAllLotteryUsersTicket(ts int64, lotterykeys []LotteryKey, callback LotteryUserTicketNotifierFunc) error {
+	for _, lotterykey := range lotterykeys { //loop delle lotteryID
+		lotterychats, err := db.GetLotteryChatIDS(lotterykey.LOId)
+		if err != nil {
+			log.Println("NotifyLotteryUsersTicket error:", err)
+			return err
+		}
+		for _, lotterychat := range lotterychats {
+			chatuser, err := db.GetUserByChatID(lotterychat.ChatID)
+			if err != nil {
+				log.Println("NotifyLotteryUsersTicket error:", err)
+				return err
+			}
+			if chatuser.Notify { // notify enabled, we get infos
+				chatkey, err := db.GetChatKeyFromPub(chatuser.ChatID, lotterykey.PubKey)
+				if err != nil { // we get default description for chatkey
+					chatkey = &ChatKey{chatuser.ChatID, lotterykey.DefaultAlias, lotterykey.PubKey}
+				}
+				err = callback(ts, chatuser, chatkey)
+				if err != nil {
+					log.Println("NotifyLotteryUsersTicket error:", err)
+					return err
+				}
+			}
+		}
+
+	}
+	return nil
+}
+
+// add Lottery tickets for the pubkey on every lottery this pubkey belongs with current timestamp
+// and returns slice of LotteryKeys (or err)
+// parameters: ts the TimeStamp, pubkey involved
+func (db *DBnode) AddLotteryTickets(ts int64, pubkey string) ([]LotteryKey, error) {
+	//ts := makeTSFromTime(time.Now())
+	lotterykeys, err := db.GetLotteryKeysByPuKey(pubkey)
+	if err != nil {
+		log.Println("AddLotteryTickets error:", err)
+		return nil, err
+	}
+	for _, lotterykey := range lotterykeys {
+		lotteryticket := LotteryTicket{lotterykey.LOId, lotterykey.PubKey, ts, 0}
+		stmt, err := db.DB.Prepare("insert into lotterytickets(LOId, PubKey, Timestamp, Extracted) values (?, ?, ?, ?)")
+		if err != nil {
+			log.Println("AddLotteryTickets error:", err)
+			return nil, err
+			//		log.Fatal(err)
+		}
+		defer stmt.Close()
+
+		_, err = stmt.Exec(lotteryticket.LOId, lotteryticket.PubKey, lotteryticket.Timestamp, lotteryticket.Extracted)
+		if err != nil {
+			log.Println("AddLotteryTickets error:", err)
+			return nil, err
+		}
+	}
+	return lotterykeys, nil
+}
+
+// returns the slice of LotteryChat (or err) for the given LotteryID (LOId)
+func (db *DBnode) GetLotteryChatIDS(loid int64) ([]LotteryChat, error) {
+	lotterychats := []LotteryChat{}
+	stmt, err := db.DB.Prepare("SELECT LOId, ChatID FROM lotterychats WHERE LOId = ?")
+	if err != nil {
+		log.Println("GetLotteryChatIDS error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := &sql.Rows{}
+	rows, err = stmt.Query(loid)
+	if err != nil {
+		log.Println("GetLotteryChatIDS error:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var loid int64
+		var chatid int64
+		err = rows.Scan(&loid, &chatid)
+		if err != nil {
+			log.Println("GetLotteryChatIDS error:", err)
+			return nil, err
+		}
+		lotterychats = append(lotterychats, LotteryChat{LOId: loid, ChatID: chatid})
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("GetLotteryChatIDS error:", err)
+		return nil, err
+	}
+
+	return lotterychats, nil
+
+}
+
+// returns the slice of LotteryKey (or err) for the given pubkey
+func (db *DBnode) GetLotteryKeysByPuKey(pubkey string) ([]LotteryKey, error) {
+	lotterykeys := []LotteryKey{}
+	stmt, err := db.DB.Prepare("SELECT LOId, DefaultAlias FROM lotterykeys WHERE PubKey = ?")
+	if err != nil {
+		log.Println("GetLotteryKeysByPuKey error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := &sql.Rows{}
+	rows, err = stmt.Query(pubkey)
+	if err != nil {
+		log.Println("GetLotteryKeysByPuKey error:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var loid int64
+		var defaultalias string
+		err = rows.Scan(&loid, &defaultalias)
+		if err != nil {
+			log.Println("GetLotteryUsersByPuKey error:", err)
+			return nil, err
+		}
+		lotterykeys = append(lotterykeys, LotteryKey{LOId: loid, PubKey: pubkey, DefaultAlias: defaultalias})
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("GetLotteryKeysByPuKey error:", err)
+		return nil, err
+	}
+
+	return lotterykeys, nil
+
+}
 
 //Recupera un record utente o lo crea vuoto se non esiste
 func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
@@ -322,7 +503,28 @@ func (db *DBnode) DelNode(unid int64) error {
 	return nil
 }
 
-//Recupera una Chiave della Chat
+//Recupera una Chiave della Chat dati ChatID e PubKey
+func (db *DBnode) GetChatKeyFromPub(chatID int64, pubkey string) (*ChatKey, error) {
+	retVal := &ChatKey{}
+
+	stmt, err := db.DB.Prepare("SELECT `ChatID`,`KeyAlias`,`PubKey` FROM `chatkeys` where ChatID = ? AND PubKey = ?")
+	if err != nil {
+		log.Println("GetChatKeyFromPub error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+	err = stmt.QueryRow(chatID, pubkey).Scan(&retVal.ChatID, &retVal.KeyAlias, &retVal.PubKey)
+	if err != nil {
+		log.Println("GetChatKeyFromPub error:", err)
+		return nil, err
+	} else {
+	}
+	log.Println("GetChatKeyFromPub: ", retVal.ChatID, retVal.KeyAlias, retVal.PubKey)
+
+	return retVal, err
+}
+
+//Recupera una Chiave della Chat dati ChatID e KeyAlias
 func (db *DBnode) GetChatKey(chatID int64, keyAlias string) (*ChatKey, error) {
 	log.Println("GetChatKey:", chatID, keyAlias)
 	retVal := &ChatKey{}
@@ -667,10 +869,65 @@ func (db *DBnode) GetFionaText() string {
 
 func (db *DBnode) CreateTablesIfNotExists() error {
 	var create_statements = [...]string{
-		`CREATE TABLE IF NOT EXISTS "chatdata" ( "ChatID" integer NOT NULL, "Name" text, "NameAsked" INTEGER DEFAULT 1, "Notify" INTEGER DEFAULT 1, PRIMARY KEY("ChatID"))`,
-		`CREATE TABLE IF NOT EXISTS "urlnodes" ( "UNId" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, "ChatID" INTEGER, "NodeName" TEXT, "NodeURL" TEXT )`,
-		`CREATE TABLE IF NOT EXISTS "chatkeys" ( "ChatID" INTEGER, "KeyAlias" TEXT, "PubKey" TEXT, PRIMARY KEY("ChatID","KeyAlias") )`,
-		`CREATE TABLE IF NOT EXISTS "miningkeys" ( "PubKey" TEXT NOT NULL UNIQUE, "LastStatus" TEXT, "LastPRV" INTEGER, "IsAutoStake" INTEGER, "Bls" TEXT, "Dsa" TEXT, PRIMARY KEY("PubKey") )`,
+		`CREATE TABLE IF NOT EXISTS "chatdata" (
+	"ChatID"	integer NOT NULL,
+	"Name"	text,
+	"NameAsked"	INTEGER DEFAULT 1,
+	"Notify"	INTEGER DEFAULT 1,
+	PRIMARY KEY("ChatID")
+)`,
+		`CREATE TABLE IF NOT EXISTS "urlnodes" (
+	"UNId" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+	"ChatID" INTEGER,
+	"NodeName" TEXT,
+	"NodeURL" TEXT
+)`,
+		`CREATE TABLE IF NOT EXISTS "chatkeys" (
+	"ChatID" INTEGER,
+	"KeyAlias" TEXT,
+	"PubKey" TEXT,
+	PRIMARY KEY("ChatID","KeyAlias")
+)`,
+		`CREATE TABLE IF NOT EXISTS "miningkeys" (
+	"PubKey" TEXT NOT NULL UNIQUE,
+	"LastStatus" TEXT,
+	"LastPRV" INTEGER,
+	"IsAutoStake" INTEGER,
+	"Bls" TEXT,
+	"Dsa" TEXT,
+	PRIMARY KEY("PubKey") )`,
+		`CREATE TABLE IF NOT EXISTS "lotteries" (
+	"LOId"	INTEGER NOT NULL UNIQUE,
+	"ChatID"	INTEGER NOT NULL,
+	"LotteryName"	TEXT NOT NULL,
+	"LotteryDescription"	TEXT,
+	PRIMARY KEY("LOId")
+)`,
+		`CREATE TABLE IF NOT EXISTS "lotteryextractions" (
+	"LOId"	INTEGER NOT NULL,
+	"Timestamp"	INTEGER,
+	"Nonce"	INTEGER,
+	"BTCBlock"	INTEGER,
+	PRIMARY KEY("LOId","Timestamp")
+)`,
+		`CREATE TABLE IF NOT EXISTS "lotterytickets" (
+	"LOId"	INTEGER NOT NULL,
+	"PubKey"	TEXT NOT NULL,
+	"Timestamp"	INTEGER NOT NULL,
+	"Extracted"	INTEGER DEFAULT 0,
+	PRIMARY KEY("LOId","PubKey","Timestamp")
+)`,
+		`CREATE TABLE IF NOT EXISTS "lotterykeys" (
+	"LOId"	INTEGER NOT NULL,
+	"PubKey"	TEXT NOT NULL,
+	"DefaultAlias"	TEXT,
+	PRIMARY KEY("LOId","PubKey")
+)`,
+		`CREATE TABLE IF NOT EXISTS "lotterychats" (
+	"LOId"	INTEGER NOT NULL,
+	"ChatID"	INTEGER NOT NULL,
+	PRIMARY KEY("LOId","ChatID")
+)`,
 	}
 	var err error = nil
 	for _, statement := range create_statements {
