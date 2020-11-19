@@ -164,7 +164,7 @@ func (db *DBnode) AddLotteryTickets(ts int64, pubkey string) ([]LotteryKey, erro
 // and returns slice of LotteryTickets (or err)
 func (db *DBnode) GetLotteryTickets(loid, startts, endts int64) ([]LotteryTicket, error) {
 	lotterytickets := []LotteryTicket{}
-	stmt, err := db.DB.Prepare("SELECT LOId, PubKey, Timestamp, Extracted FROM lotterytickets WHERE LOId = ? AND Timestamp >= ? AND Timestamp < ?")
+	stmt, err := db.DB.Prepare("SELECT LOId, PubKey, Timestamp, Extracted FROM lotterytickets WHERE LOId = ? AND Timestamp >= ? AND Timestamp < ? ORDER BY Timestamp ASC")
 	if err != nil {
 		log.Println("GetLotteryTickets error:", err)
 		return nil, err

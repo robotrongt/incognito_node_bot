@@ -552,6 +552,7 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 				return
 			}
 		}
+		y, m, _ = starttm.Date()
 		endtm := time.Date(y, m+1, 1, 0, 0, 0, 0, starttm.Location())
 		startts := models.MakeTSFromTime(starttm)
 		endts := models.MakeTSFromTime(endtm)
@@ -568,7 +569,7 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 		}
 		for _, lotterychat := range lotterychats {
 			messaggio := fmt.Sprintf("Lottery %d.", lotterychat.LOId)
-			messaggio = fmt.Sprintf("%s\n Listing tickets from %s to %s.", messaggio, models.GetTSString(startts), models.GetTSString(endts))
+			messaggio = fmt.Sprintf("%s\n Listing tickets from %s to %s.", messaggio, strings.SplitN(models.GetTSString(startts), " ", 1)[0], strings.SplitN(models.GetTSString(endts), " ", 1)[0])
 			lotterytickets, err := env.db.GetLotteryTickets(lotterychat.LOId, startts, endts)
 			if err != nil {
 				log.Println("/lsnotify err:", err)
