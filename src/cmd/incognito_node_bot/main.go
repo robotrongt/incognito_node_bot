@@ -533,7 +533,8 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 		params := strings.Fields(env.removeCmd(body.Message.Text))
 		np := len(params)
 		var errParse error = nil
-		var starttm = time.Now()
+		y, m, _ := time.Now().Date()
+		var starttm = time.Date(y, m, 1, 0, 0, 0, 0, time.Now().Location())
 		if np == 1 {
 			starttm, errParse = time.ParseInLocation("2006-01-02 15:04:05", params[0]+"-01 00:00:00", time.Now().Location())
 			if errParse != nil {
@@ -551,7 +552,6 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 				return
 			}
 		}
-		y, m, _ := starttm.Date()
 		endtm := time.Date(y, m+1, 1, 0, 0, 0, 0, starttm.Location())
 		startts := models.MakeTSFromTime(starttm)
 		endts := models.MakeTSFromTime(endtm)
@@ -567,8 +567,8 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		for _, lotterychat := range lotterychats {
-			messaggio := fmt.Sprintf("Lottery %d.\n", lotterychat.LOId)
-			messaggio = fmt.Sprintf(" Listing tickets from %s to %s.\n", models.GetTSString(startts), models.GetTSString(endts))
+			messaggio := fmt.Sprintf("Lottery %d.", lotterychat.LOId)
+			messaggio = fmt.Sprintf("%s\n Listing tickets from %s to %s.", messaggio, models.GetTSString(startts), models.GetTSString(endts))
 			lotterytickets, err := env.db.GetLotteryTickets(lotterychat.LOId, startts, endts)
 			if err != nil {
 				log.Println("/lsnotify err:", err)
@@ -579,7 +579,12 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 				return
 			}
 			for _, lotteryticket := range lotterytickets {
-				messaggio = fmt.Sprintf("  %v\n", lotteryticket)
+				chatkey, err := env.db.GetChatKeyFromPub(lotterychat.ChatID, lotteryticket.PubKey)
+				if err != nil { // we get default description for chatkey
+					lotterykey := env.db.GetLotteryKeyByKey(lotteryticket.LOId, lotteryticket.PubKey)
+					chatkey = &models.ChatKey{lotterychat.ChatID, lotterykey.DefaultAlias, lotterykey.PubKey}
+				}
+				messaggio = fmt.Sprintf("%s\n  %s ", messaggio, chatkey.KeyAlias, models.GetTSString(lotteryticket.Timestamp))
 			}
 			if err := env.sayText(body.Message.Chat.ID, messaggio); err != nil {
 				log.Println("error in sending reply:", err)

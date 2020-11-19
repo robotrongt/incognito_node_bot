@@ -305,6 +305,26 @@ func (db *DBnode) GetLotteryKeysByPuKey(pubkey string) ([]LotteryKey, error) {
 
 }
 
+// returns LotteryKey by the given loid,pubkey
+func (db *DBnode) GetLotteryKeyByKey(loid int64, pubkey string) LotteryKey {
+	stmt, err := db.DB.Prepare("SELECT DefaultAlias FROM lotterykeys WHERE LOId = ? AND PubKey = ?")
+	if err != nil {
+		log.Println("GetLotteryKeyByKey error:", err)
+		return LotteryKey{LOId: loid, PubKey: pubkey, DefaultAlias: ""}
+	}
+	defer stmt.Close()
+
+	defaultalias := ""
+	err = stmt.QueryRow(loid, pubkey).Scan(&defaultalias)
+	if err != nil {
+		log.Println("GetLotteryKeyByKey error:", err)
+		return LotteryKey{LOId: loid, PubKey: pubkey, DefaultAlias: ""}
+	}
+
+	return LotteryKey{LOId: loid, PubKey: pubkey, DefaultAlias: defaultalias}
+
+}
+
 //Recupera un record utente o lo crea vuoto se non esiste
 func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 	retVal := &ChatUser{chatID, "", true, true}
