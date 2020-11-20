@@ -570,7 +570,7 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 		for _, lotterychat := range lotterychats {
 			lottery := env.db.GetLotteryByKey(lotterychat.LOId)
 			messaggio := fmt.Sprintf("Lottery %s.", lottery.LotteryName)
-			messaggio = fmt.Sprintf("%s\nr*Listing 🎫 from %s to %s.", messaggio, strings.SplitN(models.GetTSString(startts), " ", 2)[0], strings.SplitN(models.GetTSString(endts), " ", 2)[0])
+			messaggio = fmt.Sprintf("%s\n*Listing 🎫 from %s to %s.", messaggio, strings.SplitN(models.GetTSString(startts), " ", 2)[0], strings.SplitN(models.GetTSString(endts), " ", 2)[0])
 			lotterytickets, err := env.db.GetLotteryTickets(lotterychat.LOId, startts, endts)
 			if err != nil {
 				log.Println("/lsnotify err:", err)
