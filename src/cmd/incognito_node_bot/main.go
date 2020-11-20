@@ -568,8 +568,9 @@ func (env *Env) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		for _, lotterychat := range lotterychats {
-			messaggio := fmt.Sprintf("Lottery %d.", lotterychat.LOId)
-			messaggio = fmt.Sprintf("%s\n Listing tickets from %s to %s.", messaggio, strings.SplitN(models.GetTSString(startts), " ", 2)[0], strings.SplitN(models.GetTSString(endts), " ", 2)[0])
+			lottery := env.db.GetLotteryByKey(lotterychat.LOId)
+			messaggio := fmt.Sprintf("Lottery %s.", lottery.LotteryName)
+			messaggio = fmt.Sprintf("%s\nr*Listing 🎫 from %s to %s.", messaggio, strings.SplitN(models.GetTSString(startts), " ", 2)[0], strings.SplitN(models.GetTSString(endts), " ", 2)[0])
 			lotterytickets, err := env.db.GetLotteryTickets(lotterychat.LOId, startts, endts)
 			if err != nil {
 				log.Println("/lsnotify err:", err)
@@ -647,10 +648,11 @@ type sendMessageReqBody struct {
 	Text   string `json:"text"`
 }
 
-func (env *Env) NotifyTicket(ts int64, chatuser *models.ChatUser, chatkey *models.ChatKey) error {
+func (env *Env) NotifyTicket(loid, ts int64, chatuser *models.ChatUser, chatkey *models.ChatKey) error {
 	tmstring := models.GetTSString(ts)
-	log.Printf("%d \"%s\" %t->New Ticket for %s %s\n", chatuser.ChatID, chatuser.Name, chatuser.Notify, chatkey.KeyAlias, tmstring)
-	messaggio := fmt.Sprintf("New ticket for %s->%s", chatkey.KeyAlias, tmstring)
+	lottery := env.db.GetLotteryByKey(loid)
+	log.Printf("%s \"%s\" %t->New Ticket for %s %s\n", lottery.LotteryName, chatuser.Name, chatuser.Notify, chatkey.KeyAlias, tmstring)
+	messaggio := fmt.Sprintf("Lottery %s\n*🎫 %s->%s", lottery.LotteryName, chatkey.KeyAlias, tmstring)
 	if err := env.sayText(chatkey.ChatID, messaggio); err != nil {
 		log.Println("error in sending reply:", err)
 	}

@@ -134,10 +134,11 @@ type sendMessageReqBody struct {
 	Text   string `json:"text"`
 }
 
-func (env *Env) NotifyTicket(ts int64, chatuser *models.ChatUser, chatkey *models.ChatKey) error {
+func (env *Env) NotifyTicket(loid, ts int64, chatuser *models.ChatUser, chatkey *models.ChatKey) error {
 	tmstring := models.GetTSString(ts)
-	log.Printf("%d \"%s\" %t->New Ticket for %s %s\n", chatuser.ChatID, chatuser.Name, chatuser.Notify, chatkey.KeyAlias, tmstring)
-	messaggio := fmt.Sprintf("New ticket for %s->%s", chatkey.KeyAlias, tmstring)
+	lottery := env.db.GetLotteryByKey(loid)
+	log.Printf("%s \"%s\" %t->New Ticket for %s %s\n", lottery.LotteryName, chatuser.Name, chatuser.Notify, chatkey.KeyAlias, tmstring)
+	messaggio := fmt.Sprintf("Lottery %s\n*🎫 %s->%s", lottery.LotteryName, chatkey.KeyAlias, tmstring)
 	if err := env.sayText(chatkey.ChatID, messaggio); err != nil {
 		log.Println("error in sending reply:", err)
 	}

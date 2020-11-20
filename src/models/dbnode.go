@@ -98,7 +98,7 @@ type LotteryChat struct {
 }
 
 type StatusChangeNotifierFunc func(miningkey *MiningKey, oldstatus string, oldprv int64) error
-type LotteryUserTicketNotifierFunc func(ts int64, chatuser *ChatUser, chatkey *ChatKey) error //Signals addition of a new ticket of a key in Users of the Lottery
+type LotteryUserTicketNotifierFunc func(loid, ts int64, chatuser *ChatUser, chatkey *ChatKey) error //Signals addition of a new ticket of a key in Users of the Lottery
 
 // Calls the LotteryUserTicketNotifierFunc for all the ChatUsers that knows that ChatKey
 func (db *DBnode) NotifyAllLotteryUsersTicket(ts int64, lotterykeys []LotteryKey, callback LotteryUserTicketNotifierFunc) error {
@@ -119,7 +119,7 @@ func (db *DBnode) NotifyAllLotteryUsersTicket(ts int64, lotterykeys []LotteryKey
 				if err != nil { // we get default description for chatkey
 					chatkey = &ChatKey{chatuser.ChatID, lotterykey.DefaultAlias, lotterykey.PubKey}
 				}
-				err = callback(ts, chatuser, chatkey)
+				err = callback(lotterykey.LOId, ts, chatuser, chatkey)
 				if err != nil {
 					log.Println("NotifyLotteryUsersTicket error:", err)
 					return err
@@ -302,6 +302,28 @@ func (db *DBnode) GetLotteryKeysByPuKey(pubkey string) ([]LotteryKey, error) {
 	}
 
 	return lotterykeys, nil
+
+}
+
+// returns Lottery by the given loid
+func (db *DBnode) GetLotteryByKey(loid int64) Lottery {
+	stmt, err := db.DB.Prepare("SELECT ChatID, LotteryName, LotteryDescription FROM lotterie WHERE LOId = ?")
+	if err != nil {
+		log.Println("GetLotteryByKey error:", err)
+		return Lottery{LOId: loid, ChatID: 0, LotteryName: "", LotteryDescription: ""}
+	}
+	defer stmt.Close()
+
+	chatid := int64(0)
+	lotteryname := ""
+	lotterydescription := ""
+	err = stmt.QueryRow(loid).Scan(&chatid, &lotteryname, &lotterydescription)
+	if err != nil {
+		log.Println("GetLotteryByKey error:", err)
+		return Lottery{LOId: loid, ChatID: 0, LotteryName: "", LotteryDescription: ""}
+	}
+
+	return Lottery{LOId: loid, ChatID: chatid, LotteryName: lotteryname, LotteryDescription: lotterydescription}
 
 }
 
@@ -988,7 +1010,8 @@ func (db *DBnode) CreateTablesIfNotExists() error {
 	"IsAutoStake" INTEGER,
 	"Bls" TEXT,
 	"Dsa" TEXT,
-	PRIMARY KEY("PubKey") )`,
+	PRIMARY KEY("PubKey")
+)`,
 		`CREATE TABLE IF NOT EXISTS "lotteries" (
 	"LOId"	INTEGER NOT NULL UNIQUE,
 	"ChatID"	INTEGER NOT NULL,

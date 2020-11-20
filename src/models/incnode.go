@@ -22,6 +22,7 @@ type COINS []COIN
 var BIG_COINS = COINS{
 	COIN{Name: "PRV", ID: PRV_ID, Dec: 1e-09},
 	COIN{Name: "ETH", ID: "ffd8d42dc40a8d166ea4848baf8b5f6e912ad79875f4373070b59392b1756c8f", Dec: 1e-09},
+	COIN{Name: "XMR", ID: "c01e7dc1d1aba995c19b257412340b057f8ad1482ccb6a9bb0adce61afbf05d4", Dec: 1e-09},
 	COIN{Name: "USDT", ID: "716fd1009e2a1669caacc36891e707bfdf02590f96ebd897548e8963c95ebac0", Dec: 1e-06},
 	COIN{Name: "USDC", ID: "1ff2da446abfebea3ba30385e2ca99b0f0bbeda5c6371f4c23c939672b429a42", Dec: 1e-06},
 	COIN{Name: "BTC", ID: "b832e5d3b1f01a4f0623f7fe91d6673461e1f5d37d91fe78c5c2e6183ff39696", Dec: 1e-09},
@@ -59,7 +60,7 @@ func (coins *COINS) GetCoinByName(name string) COIN {
 			return coin
 		}
 	}
-	return COIN{"", "", 0}
+	return COIN{name, name, 1e-09}
 }
 
 func (coins *COINS) GetFloat64Val(name string, valint int64) float64 {
