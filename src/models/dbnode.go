@@ -307,7 +307,7 @@ func (db *DBnode) GetLotteryKeysByPuKey(pubkey string) ([]LotteryKey, error) {
 
 // returns Lottery by the given loid
 func (db *DBnode) GetLotteryByKey(loid int64) Lottery {
-	stmt, err := db.DB.Prepare("SELECT ChatID, LotteryName, LotteryDescription FROM lotterie WHERE LOId = ?")
+	stmt, err := db.DB.Prepare("SELECT ChatID, LotteryName, LotteryDescription FROM lotteries WHERE LOId = ?")
 	if err != nil {
 		log.Println("GetLotteryByKey error:", err)
 		return Lottery{LOId: loid, ChatID: 0, LotteryName: "", LotteryDescription: ""}
