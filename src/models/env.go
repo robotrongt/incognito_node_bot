@@ -53,6 +53,7 @@ func NewEnv() *Env {
 			Cmd{Cmd: "/status", Descr: "[nodo]: elenca lo stato delle tue key di mining"},
 			Cmd{Cmd: "/balance", Descr: "[alias_chiave]: reward accurato della chiave di mining"},
 			Cmd{Cmd: "/notify", Descr: "turns notifications off or on"},
+			Cmd{Cmd: "/lstickets", Descr: "[aaaa-mm] lists all lottery tickets"},
 		},
 		DEFAULT_NODE_URL:     os.Getenv("DEFAULT_NODE_URL"),
 		DEFAULT_FULLNODE_URL: os.Getenv("DEFAULT_FULLNODE_URL"),

@@ -28,10 +28,16 @@ func main() {
 	defer log.Printf("%T %T\n", env.Db, env.Db.DB)
 
 	rand.Seed(time.Now().UnixNano())
+	for _, cmd := range env.BOT_CMDS {
+		log.Printf("%s - %s\n", cmd.Cmd, cmd.Descr)
+	}
+
+	log.Println(env.StrCmd("src/models/env.go"))
+	log.Println(env.StrCmd("/lstickets src/models/env.go"))
 
 	var tmLocalParse = "2006-01-02 15:04:05"
 	loc := time.Now().Location()
-	var tmExtract, err = time.ParseInLocation(tmLocalParse, "2020-11-01", loc)
+	var tmExtract, err = time.ParseInLocation(tmLocalParse, "2020-11-01 00:00:00", loc)
 	if err != nil {
 		log.Println("error parsing time:", err)
 		return
