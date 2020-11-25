@@ -2,9 +2,11 @@ package models
 
 import (
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 	"log"
+	"math/rand"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const TimeStampFormat = "2006-01-02 15:04:05 MST"
@@ -975,10 +977,31 @@ func (db *DBnode) GetFionaText() string {
 		"2020-12-30": "ma non erano in ferie?",
 		"2020-12-31": "Buon anno!",
 	}
+	f := []string{
+		"\nQuesto mi fa venire in mente quella tipa che al lavoro non ricordava il cognome del nuovo capo reparto, ma in compenso ricordava benissimo a cosa somigliasse. Così in magazzino lo chiama: \"scusi Foglioni, posso?\". Epica figura di merda perchè il cognome in realtà era Festicoli!😂😂😂\nTanto la Fiona non capirebbe....",
+		"\nScusa, ma non ricordo, come si chiamavano quei due somari? Fiolindo e Iona?😂",
+		"\nNon ho tempo per odiarli, ma 2 secondi per madarli affanculo si!😂😂",
+		"\nAlcuni portano la felicità ovunque vadano. Altri quando se ne vanno.!😂😂",
+		"\nScusa, mi scappa da ridere!😂😂",
+		"\nDue cose sono infinite: l’universo e la stupidità umana, ma non sono sicuro dell’universo!😂😂",
+		"\nL’ottimista afferma che viviamo nel migliore dei mondi possibili, il pessimista teme che sia vero!😂😂",
+		"\nLa più grande lezione nella vita è sapere che anche i pazzi, alle volte, hanno ragione!😂😂",
+		"\nNon voglio che la gente sia troppo simpatica, così mi risparmia il fastidio di cercare di piacergli!😂😂",
+		"\nHo imparato tanto tempo fa a non fare lotta con i maiali. Ti sporchi tutto e, soprattutto, ai maiali piace!😂😂",
+		"\nSoltanto l’inutilità del primo diluvio trattiene Dio dal mandarne un secondo!😂😂",
+		"\nQuando un uomo siede vicino ad una ragazza carina per un’ora, sembra che sia passato un minuto. Ma fatelo sedere su una stufa accesa per un minuto e gli sembrerà più lungo di qualsiasi ora. Questa è la relatività!😂😂",
+		"\nNon sa nulla e pensa di sapere tutto. Ciò indica chiaramente una proponsione per la carriera politica!😂😂",
+		"\nCi sono momenti in cui va bene tutto; non ti spaventare, non dura!😂😂",
+		"\nL’unico mistero nella vita è il motivo per cui i piloti kamikaze indossavano l’elmetto!😂😂",
+		"\nLa prova più evidente che esistono altre forme di vita intelligenti nell’Universo è che nessuna di esse ha mai provato a contattarci!😂😂",
+	}
+
+	i := rand.Intn(len(f))
+
 	if val, ok := m[time.Now().Format("2006-01-02")]; ok {
-		return val
+		return val + f[i]
 	} else {
-		return "Vi mancano tanto??"
+		return "Vi mancano tanto??" + f[i]
 	}
 }
 
