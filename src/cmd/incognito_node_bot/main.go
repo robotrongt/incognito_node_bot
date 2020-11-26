@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -501,11 +502,9 @@ func (env MyEnv) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 				return
 			}
 		}
-		y, m, _ = starttm.Date()
-		endtm := time.Date(y, m+1, 1, 0, 0, 0, 0, starttm.Location())
-		startts := models.MakeTSFromTime(starttm)
-		endts := models.MakeTSFromTime(endtm)
-		log.Println("/lstickets", models.GetTSString(startts), models.GetTSString(endts))
+		period := fmt.Sprintf("%s-%s", strconv.Itoa(starttm.Year()), strconv.Itoa(int(starttm.Month())))
+
+		log.Println("/lstickets", period)
 
 		lotterychats, err := env.Db.GetLotteryIDS(body.Message.Chat.ID)
 		if err != nil {
@@ -519,8 +518,8 @@ func (env MyEnv) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 		for _, lotterychat := range lotterychats {
 			lottery := env.Db.GetLotteryByKey(lotterychat.LOId)
 			messaggio := fmt.Sprintf("Lottery %s.", lottery.LotteryName)
-			messaggio = fmt.Sprintf("%s\n*Listing 🎫 from %s to %s.", messaggio, strings.SplitN(models.GetTSString(startts), " ", 2)[0], strings.SplitN(models.GetTSString(endts), " ", 2)[0])
-			lotterytickets, err := env.Db.GetLotteryTickets(lotterychat.LOId, startts, endts)
+			messaggio = fmt.Sprintf("%s\n*Listing 🎫 of %s.", messaggio, period)
+			lotterytickets, err := env.Db.GetLotteryTickets(lotterychat.LOId, starttm, -1)
 			if err != nil {
 				log.Println("/lsnotify err:", err)
 				messaggio := fmt.Sprintf("Problems with /lsnotify GetLotteryTickets '%v'.", err)
@@ -535,7 +534,20 @@ func (env MyEnv) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 					lotterykey := env.Db.GetLotteryKeyByKey(lotteryticket.LOId, lotteryticket.PubKey)
 					chatkey = &models.ChatKey{lotterychat.ChatID, lotterykey.DefaultAlias, lotterykey.PubKey}
 				}
-				messaggio = fmt.Sprintf("%s\n  %s %s", messaggio, chatkey.KeyAlias, models.GetTSString(lotteryticket.Timestamp))
+				flag := ""
+				if lotteryticket.Extracted > 0 {
+					flag = fmt.Sprintf("(%s)", lotteryticket.Extracted)
+				}
+				if lotteryticket.Extracted == 1 {
+					flag = "🥇"
+				}
+				if lotteryticket.Extracted == 2 {
+					flag = "🥈"
+				}
+				if lotteryticket.Extracted == 3 {
+					flag = "🥉"
+				}
+				messaggio = fmt.Sprintf("%s\n  %s %s %s", messaggio, chatkey.KeyAlias, models.GetTSString(lotteryticket.Timestamp), flag)
 			}
 			if err := env.SayText(body.Message.Chat.ID, messaggio); err != nil {
 				log.Println("error in sending reply:", err)

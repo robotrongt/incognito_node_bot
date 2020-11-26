@@ -29,6 +29,21 @@ func GetTSString(ts int64) string {
 	return GetTSTime(ts).Format(TimeStampFormat)
 }
 
+//Returns the timestamps from begin of month to begin of next month of the TimeStamp passed
+func GetTsMonthLimitsFromTs(timestamp int64) (int64, int64) {
+	tm := GetTSTime(timestamp)
+	return GetTsMonthLimitsFromTm(tm)
+}
+
+//Returns the timestamps from begin of month to begin of next month of the Time passed
+func GetTsMonthLimitsFromTm(tm time.Time) (int64, int64) {
+	tmFrom := time.Date(tm.Year(), tm.Month(), 1, 0, 0, 0, 0, tm.Location())
+	tmTo := tmFrom.AddDate(0, 1, 0)
+	tsFrom := MakeTSFromTime(tmFrom)
+	tsTo := MakeTSFromTime(tmTo)
+	return tsFrom, tsTo
+}
+
 type DBnode struct {
 	DB *sql.DB
 }
@@ -162,11 +177,17 @@ func (db *DBnode) AddLotteryTickets(ts int64, pubkey string) ([]LotteryKey, erro
 	return lotterykeys, nil
 }
 
-// list Lottery tickets by period starts endts for a LOId
+// list Lottery tickets by month of timestamp for a LOId with extract passed
+// if extract=-1 returns all
 // and returns slice of LotteryTickets (or err)
-func (db *DBnode) GetLotteryTickets(loid, startts, endts int64) ([]LotteryTicket, error) {
+func (db *DBnode) GetLotteryTickets(loid int64, tm time.Time, extract int64) ([]LotteryTicket, error) {
+	tsFrom, tsTo := GetTsMonthLimitsFromTm(tm)
 	lotterytickets := []LotteryTicket{}
-	stmt, err := db.DB.Prepare("SELECT LOId, PubKey, Timestamp, Extracted FROM lotterytickets WHERE LOId = ? AND Timestamp >= ? AND Timestamp < ? ORDER BY Timestamp ASC")
+	queryStr := "SELECT LOId, PubKey, Timestamp, Extracted FROM lotterytickets WHERE LOId = ? AND Timestamp >= ? AND Timestamp < ? AND Extracted = ? ORDER BY Timestamp ASC"
+	if extract < 0 {
+		queryStr = "SELECT LOId, PubKey, Timestamp, Extracted FROM lotterytickets WHERE LOId = ? AND Timestamp >= ? AND Timestamp < ? ORDER BY Timestamp ASC"
+	}
+	stmt, err := db.DB.Prepare(queryStr)
 	if err != nil {
 		log.Println("GetLotteryTickets error:", err)
 		return nil, err
@@ -174,7 +195,12 @@ func (db *DBnode) GetLotteryTickets(loid, startts, endts int64) ([]LotteryTicket
 	defer stmt.Close()
 
 	rows := &sql.Rows{}
-	rows, err = stmt.Query(loid, startts, endts)
+
+	if extract < 0 { //query tutti
+		rows, err = stmt.Query(loid, tsFrom, tsTo)
+	} else { // query solo specifica extracted
+		rows, err = stmt.Query(loid, tsFrom, tsTo, extract)
+	}
 	if err != nil {
 		log.Println("GetLotteryTickets error:", err)
 		return nil, err
@@ -239,12 +265,7 @@ func (db *DBnode) GetLotteryChatIDS(loid int64) ([]LotteryChat, error) {
 // Deletes the lottery extraction of the same month if exists and save the one passed
 // returns error if problems
 func (db *DBnode) ReplaceLotteryExtraction(lotteryextraction LotteryExtraction) error {
-	tm := GetTSTime(lotteryextraction.Timestamp)
-	tmFrom := time.Date(tm.Year(), tm.Month(), 1, 0, 0, 0, 0, tm.Location())
-	tmTo := tmFrom.AddDate(0, 1, 0)
-	log.Println("ReplaceLotteryExtraction LOId:", lotteryextraction.LOId, " BTCBlock:", lotteryextraction.BTCBlock, " from:", tmFrom, " to:", tmTo)
-	tsFrom := MakeTSFromTime(tmFrom)
-	tsTo := MakeTSFromTime(tmTo)
+	tsFrom, tsTo := GetTsMonthLimitsFromTs(lotteryextraction.Timestamp)
 
 	if stmt, err := db.DB.Prepare("DELETE FROM lotteryextractions WHERE LOId = ? AND Timestamp > ? AND Timestamp <= ?"); err != nil {
 		if err != nil {
@@ -285,12 +306,7 @@ func (db *DBnode) GetLotteryExtraction(loid, timestamp int64) (LotteryExtraction
 	}
 	defer stmt.Close()
 
-	tm := GetTSTime(timestamp)
-	tmFrom := time.Date(tm.Year(), tm.Month(), 1, 0, 0, 0, 0, tm.Location())
-	tmTo := tmFrom.AddDate(0, 1, 0)
-	log.Println("GetLotteryExtraction from:", tmFrom, " to:", tmTo)
-	tsFrom := MakeTSFromTime(tmFrom)
-	tsTo := MakeTSFromTime(tmTo)
+	tsFrom, tsTo := GetTsMonthLimitsFromTs(timestamp)
 
 	ts := int64(0)
 	nonce := int64(0)
@@ -302,6 +318,28 @@ func (db *DBnode) GetLotteryExtraction(loid, timestamp int64) (LotteryExtraction
 	}
 
 	return LotteryExtraction{LOId: loid, Timestamp: ts, Nonce: nonce, BTCBlock: btcblock}, nil
+}
+
+// Returns the number of next extraction to do from a set of tickets given LOId and timestamp of the requested month
+// returns err if problems
+func (db *DBnode) GetLotteryExtract(loid, timestamp int64) (int, error) {
+	stmt, err := db.DB.Prepare("SELECT count(DISTINCT extracted) FROM lotterytickets WHERE LOId = ? AND Timestamp > ? AND Timestamp <= ?")
+	if err != nil {
+		log.Println("GetLotteryExtract error:", err)
+		return 0, err
+	}
+	defer stmt.Close()
+
+	tsFrom, tsTo := GetTsMonthLimitsFromTs(timestamp)
+
+	extracts := int(0)
+	err = stmt.QueryRow(loid, tsFrom, tsTo).Scan(&extracts)
+	if err != nil {
+		log.Println("GetLotteryExtract error:", err)
+		return 0, err
+	}
+
+	return extracts, nil
 }
 
 // returns the slice of all Lotteries (or err)
