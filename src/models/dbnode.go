@@ -1101,7 +1101,7 @@ func (db *DBnode) GetFionaText() string {
 		"\nL’unico mistero nella vita è il motivo per cui i piloti kamikaze indossavano l’elmetto!😂😂",
 		"\nLa prova più evidente che esistono altre forme di vita intelligenti nell’Universo è che nessuna di esse ha mai provato a contattarci!😂😂",
 		"\nCerto che da voi la frase \"Ci vogliono i coglioni per fare i dirigenti!\" deve essere stata fraintesa!😂😂😂",
-		"\nFrau Blücher!!! 🐴😂😂😂",
+		"\nFrau Blücher!!! 🐴😂😂😂\nhttps://youtu.be/Ypfu50kDnR4",
 	}
 
 	i := rand.Intn(len(f))
