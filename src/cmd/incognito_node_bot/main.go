@@ -536,7 +536,7 @@ func (env MyEnv) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 				}
 				flag := ""
 				if lotteryticket.Extracted > 0 {
-					flag = fmt.Sprintf("(%s)", lotteryticket.Extracted)
+					flag = fmt.Sprintf("(%d)", lotteryticket.Extracted)
 				}
 				if lotteryticket.Extracted == 1 {
 					flag = "🥇"
