@@ -26,22 +26,22 @@ func makeTimestamp2(t string) (int64, error) {
 // this function will based on the given #param1 timestamp and #param3 chainTimestamp
 // to calculate blockheight with approximate timestamp with #param1
 // blockHeight = chainHeight - (chainTimestamp - timestamp) / 600
-func estimateBlockHeight(self RandomClient, timestamp int64, chainHeight int, chainTimestamp int64, startTime time.Time, maxTime time.Duration) (int, error) {
-	var estimateBlockHeight int
+func estimateBlockHeight(self RandomClient, timestamp int64, chainHeight int64, chainTimestamp int64, startTime time.Time, maxTime time.Duration) (int64, error) {
+	var estimateBlockHeight int64
 	// fmt.Printf("EstimateBlockHeight timestamp %d, chainHeight %d, chainTimestamp %d\n", timestamp, chainHeight, chainTimestamp)
 	offsetSeconds := timestamp - chainTimestamp
 	if offsetSeconds > 0 {
 		return chainHeight, nil
 	} else {
 		estimateBlockHeight = chainHeight
-		cacheDiff := 0
+		cacheDiff := int64(0)
 		isStart := false
 		// diff is negative
 		for true {
 			if time.Since(startTime).Seconds() > maxTime.Seconds() {
 				return -1, errors.New("estimate block height for random instruction exceed time out")
 			}
-			diff := int(offsetSeconds / (BTC_BLOCK_INTERVAL))
+			diff := int64(offsetSeconds / (BTC_BLOCK_INTERVAL))
 			if !isStart {
 				cacheDiff = diff
 				isStart = true

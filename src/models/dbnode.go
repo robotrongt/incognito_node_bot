@@ -236,6 +236,112 @@ func (db *DBnode) GetLotteryChatIDS(loid int64) ([]LotteryChat, error) {
 	return lotterychats, nil
 }
 
+// Deletes the lottery extraction of the same month if exists and save the one passed
+// returns error if problems
+func (db *DBnode) ReplaceLotteryExtraction(lotteryextraction LotteryExtraction) error {
+	tm := GetTSTime(lotteryextraction.Timestamp)
+	tmFrom := time.Date(tm.Year(), tm.Month(), 1, 0, 0, 0, 0, tm.Location())
+	tmTo := tmFrom.AddDate(0, 1, 0)
+	log.Println("ReplaceLotteryExtraction LOId:", lotteryextraction.LOId, " BTCBlock:", lotteryextraction.BTCBlock, " from:", tmFrom, " to:", tmTo)
+	tsFrom := MakeTSFromTime(tmFrom)
+	tsTo := MakeTSFromTime(tmTo)
+
+	if stmt, err := db.DB.Prepare("DELETE FROM lotteryextractions WHERE LOId = ? AND Timestamp > ? AND Timestamp <= ?"); err != nil {
+		if err != nil {
+			log.Println("ReplaceLotteryExtraction error:", err)
+			return err
+		}
+		defer stmt.Close()
+
+		_, err = stmt.Exec(lotteryextraction.LOId, tsFrom, tsTo)
+		if err != nil {
+			log.Println("ReplaceLotteryExtraction error:", err)
+			//	return err
+		}
+	}
+
+	stmt, err := db.DB.Prepare("INSERT INTO lotteryextractions(LOId, Timestamp, Nonce, BTCBlock) VALUES (?, ?, ?, ?)")
+	if err != nil {
+		log.Println("ReplaceLotteryExtraction error:", err)
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(lotteryextraction.LOId, lotteryextraction.Timestamp, lotteryextraction.Nonce, lotteryextraction.BTCBlock)
+	if err != nil {
+		log.Println("ReplaceLotteryExtraction error:", err)
+		return err
+	}
+
+	return nil
+}
+
+// return the lottery extraction given LOId and Timestamp or error
+func (db *DBnode) GetLotteryExtraction(loid, timestamp int64) (LotteryExtraction, error) {
+	stmt, err := db.DB.Prepare("SELECT Timestamp, Nonce, BTCBlock FROM lotteryextractions WHERE LOId = ? AND Timestamp > ? AND Timestamp <= ?")
+	if err != nil {
+		log.Println("GetLotteryExtraction error:", err)
+		return LotteryExtraction{}, err
+	}
+	defer stmt.Close()
+
+	tm := GetTSTime(timestamp)
+	tmFrom := time.Date(tm.Year(), tm.Month(), 1, 0, 0, 0, 0, tm.Location())
+	tmTo := tmFrom.AddDate(0, 1, 0)
+	log.Println("GetLotteryExtraction from:", tmFrom, " to:", tmTo)
+	tsFrom := MakeTSFromTime(tmFrom)
+	tsTo := MakeTSFromTime(tmTo)
+
+	ts := int64(0)
+	nonce := int64(0)
+	btcblock := int64(0)
+	err = stmt.QueryRow(loid, tsFrom, tsTo).Scan(&ts, &nonce, &btcblock)
+	if err != nil {
+		log.Println("GetLotteryExtraction error:", err)
+		return LotteryExtraction{}, err
+	}
+
+	return LotteryExtraction{LOId: loid, Timestamp: ts, Nonce: nonce, BTCBlock: btcblock}, nil
+}
+
+// returns the slice of all Lotteries (or err)
+func (db *DBnode) GetLotteries() ([]Lottery, error) {
+	lotteries := []Lottery{}
+
+	stmt, err := db.DB.Prepare("SELECT LOId, ChatID, LotteryName, LotteryDescription FROM lotteries")
+	if err != nil {
+		log.Println("GetLotteries error:", err)
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows := &sql.Rows{}
+	rows, err = stmt.Query()
+	if err != nil {
+		log.Println("GetLotteries error:", err)
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var loid int64
+		var chatid int64
+		var lotteryname string
+		var lotterydescription string
+		err = rows.Scan(&loid, &chatid, &lotteryname, &lotterydescription)
+		if err != nil {
+			log.Println("GetLotteries error:", err)
+			return nil, err
+		}
+		lotteries = append(lotteries, Lottery{LOId: loid, ChatID: chatid, LotteryName: lotteryname, LotteryDescription: lotterydescription})
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("GetLotteries error:", err)
+		return nil, err
+	}
+
+	return lotteries, nil
+}
+
 // returns the slice of LotteryChat (or err) for the given ChatID
 func (db *DBnode) GetLotteryIDS(chatid int64) ([]LotteryChat, error) {
 	lotterychats := []LotteryChat{}
@@ -994,6 +1100,7 @@ func (db *DBnode) GetFionaText() string {
 		"\nCi sono momenti in cui va bene tutto; non ti spaventare, non dura!😂😂",
 		"\nL’unico mistero nella vita è il motivo per cui i piloti kamikaze indossavano l’elmetto!😂😂",
 		"\nLa prova più evidente che esistono altre forme di vita intelligenti nell’Universo è che nessuna di esse ha mai provato a contattarci!😂😂",
+		"\nCerto che da voi la frase \"Ci vogliono i coglioni per fare i dirigenti!\" deve essere stata fraintesa!😂😂😂",
 	}
 
 	i := rand.Intn(len(f))

@@ -1,2 +1,6 @@
 github.com/mattn/go-sqlite3 v1.14.4 h1:4rQjbDxdu9fSgI/r3KN72G3c2goxknAqHHgPWWs8UlI=
 github.com/mattn/go-sqlite3 v1.14.4/go.mod h1:WVKg1VTActs4Qso6iwGbiFih2UIHo0ENGwNd0Lj+XmI=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+github.com/robotrongt/incognito_node_bot v0.0.0-20201125133007-e30a4cf8db1a h1:WUzoZm8Tx5e9kFb4xepH0lIec8puJZstTj1MQIReLSY=
+github.com/robotrongt/incognito_node_bot v0.0.0-20201125133007-e30a4cf8db1a/go.mod h1:iuNU1OXXziuPztHWuV7tfeTYjn6iprO3vmxnK3ZI6UE=
