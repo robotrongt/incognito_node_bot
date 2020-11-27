@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -72,6 +73,9 @@ func main() {
 	defer log.Println("Exiting...")
 	defer log.Printf("%T %T\n", env.Db, env.Db.DB)
 
+	noBtcClientPtr := flag.Bool("noBtcClient", false, "skip checking btc blockchain for nonce")
+	flag.Parse()
+
 	rand.Seed(time.Now().UnixNano())
 
 	tmNow := time.Now() //prendiamo data attuale
@@ -83,16 +87,21 @@ func main() {
 	btcblock := BtcBlock{}
 	useDbNonce := false
 	tmTicketsStr := fmt.Sprintf("%s-%s", strconv.Itoa(tmTickets.Year()), strconv.Itoa(int(tmTickets.Month())))
-	if nonce, blockHeight, btcts, err := getNonce(tmExtract); err == nil {
-		btcblock = BtcBlock{Nonce: nonce, Height: blockHeight, Timestamp: btcts}
-		log.Println("tmExtract:", tmExtract)
-		log.Println("tsExtract:", tsExtract)
-		log.Println("blockHeight:", blockHeight)
-		log.Println("btcts:", btcts, models.GetTSTime(btcts))
-		log.Println("nonce:", nonce)
-	} else {
-		log.Println("error searching btc block and nonce:", err)
+	if *noBtcClientPtr { //we want the nonce from db
 		useDbNonce = true
+		log.Printf("noBtcClient: %t\n", *noBtcClientPtr)
+	} else {
+		if nonce, blockHeight, btcts, err := getNonce(tmExtract); err == nil {
+			btcblock = BtcBlock{Nonce: nonce, Height: blockHeight, Timestamp: btcts}
+			log.Println("tmExtract:", tmExtract)
+			log.Println("tsExtract:", tsExtract)
+			log.Println("blockHeight:", blockHeight)
+			log.Println("btcts:", btcts, models.GetTSTime(btcts))
+			log.Println("nonce:", nonce)
+		} else {
+			log.Println("error searching btc block and nonce:", err)
+			useDbNonce = true
+		}
 	}
 	lotteries, err := env.Db.GetLotteries()
 	if err != nil {

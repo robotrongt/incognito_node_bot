@@ -524,7 +524,7 @@ func (db *DBnode) GetLotteryKeyByKey(loid int64, pubkey string) LotteryKey {
 func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 	retVal := &ChatUser{chatID, "", true, true}
 
-	stmt, err := db.DB.Prepare("select Name, NameAsked from chatdata where ChatID = ?")
+	stmt, err := db.DB.Prepare("select Name, NameAsked, Notify from chatdata where ChatID = ?")
 	if err != nil {
 		log.Println("GetUserByChatID error:", err)
 		return nil, err
@@ -533,14 +533,16 @@ func (db *DBnode) GetUserByChatID(chatID int64) (*ChatUser, error) {
 	defer stmt.Close()
 	var name string
 	var nameasked bool
-	err = stmt.QueryRow(chatID).Scan(&name, &nameasked)
+	var notify bool
+	err = stmt.QueryRow(chatID).Scan(&name, &nameasked, &notify)
 	if err != nil {
 		retVal, err = db.CreateUserByChatID(chatID)
 	} else {
 		retVal.Name = name
 		retVal.NameAsked = nameasked
+		retVal.Notify = notify
 	}
-	log.Println(retVal.Name, retVal.NameAsked)
+	log.Printf("User: %s NameAsked: %t Notify: %t\n", retVal.Name, retVal.NameAsked, retVal.Notify)
 
 	return retVal, err
 }
