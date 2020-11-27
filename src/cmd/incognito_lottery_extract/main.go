@@ -117,7 +117,7 @@ func main() {
 		if err != nil {
 			log.Println("error GetLotteryExtraction:", err)
 			if useDbNonce { //se dobbiamo usare db usciamo perche non l'abbiamo trovato
-				break
+				continue
 			} else { // non abbiamo db, salviamo dato blockchain
 				lotteryextraction.LOId = lottery.LOId
 				lotteryextraction.Nonce = btcblock.Nonce
@@ -125,7 +125,7 @@ func main() {
 				lotteryextraction.BTCBlock = btcblock.Height
 				if err := env.Db.ReplaceLotteryExtraction(lotteryextraction); err != nil {
 					log.Println("error ReplaceLotteryExtraction:", err)
-					break
+					continue
 				}
 			}
 		}
@@ -138,7 +138,7 @@ func main() {
 				lotteryextraction.BTCBlock = btcblock.Height
 				if err := env.Db.ReplaceLotteryExtraction(lotteryextraction); err != nil {
 					log.Println("error ReplaceLotteryExtraction:", err)
-					break
+					continue
 				}
 			}
 		}
@@ -150,13 +150,13 @@ func main() {
 		extract, err := env.Db.GetLotteryExtract(lottery.LOId, tmTickets)
 		if err != nil {
 			log.Println("error GetLotteryExtract:", err)
-			break
+			continue
 		}
 		log.Printf("Trying extraction n.%d for Lottery %d", extract, lottery.LOId)
 		tickets, err := env.Db.GetLotteryTickets(lottery.LOId, tmTickets, -1) //prendiamo tutti i tickets e ripetiamo le estrazioni fino a extract -1
 		if err != nil {
 			log.Println("error GetLotteryTickets:", err)
-			break
+			continue
 		}
 		tt := Tickets{}
 		for _, ticket := range tickets {
@@ -174,7 +174,7 @@ func main() {
 		err = env.Db.UpdateLotteryTicketWinner(tk)
 		if err != nil {
 			log.Println("error UpdateLotteryTicketWinner:", err)
-			break
+			continue
 		}
 		//get the default alias for this pubkey
 		lotterykey := env.Db.GetLotteryKeyByKey(winner.LOId, winner.PubKey)
@@ -196,14 +196,14 @@ func main() {
 		lotterychats, err := env.Db.GetLotteryChatIDS(winner.LOId)
 		if err != nil {
 			log.Println("error GetLotteryChatIDS:", err)
-			break
+			continue
 		}
 		for _, lotterychat := range lotterychats {
 			//vediamo se la chat vuole essere notificata
 			chatuser, err := env.Db.GetUserByChatID(lotterychat.ChatID)
 			if !chatuser.Notify {
 				log.Println("Skipping notify ChatUser:", chatuser.Name)
-				break
+				continue
 			}
 			// vediamo se la chat ha un alias specifico
 			thealias := defaultalias
