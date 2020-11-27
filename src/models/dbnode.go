@@ -2,6 +2,8 @@ package models
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -146,6 +148,31 @@ func (db *DBnode) NotifyAllLotteryUsersTicket(ts int64, lotterykeys []LotteryKey
 
 	}
 	return nil
+}
+
+// save the field Extracted of the ticket if there isn't another for the same
+// lottery.
+// Returns err if problems
+func (db *DBnode) UpdateLotteryTicketWinner(ticket LotteryTicket) error {
+	if tickets, err := db.GetLotteryTickets(ticket.LOId, GetTSTime(ticket.Timestamp), ticket.Extracted); len(tickets) > 0 && err == nil {
+		errstr := fmt.Sprintf("Estrazione già presente: LOId %d TS %d Ex %d", ticket.LOId, ticket.Timestamp, ticket.Extracted)
+		err = errors.New(errstr)
+		log.Println("UpdateLotteryTicketWinner error:", err)
+		return err
+	}
+	stmt, err := db.DB.Prepare("UPDATE lotterytickets SET Extracted = ? WHERE LOId = ? AND PubKey = ? AND Timestamp = ?")
+	if err != nil {
+		log.Println("UpdateLotteryTicketWinner error:", err)
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(ticket.Extracted, ticket.LOId, ticket.PubKey, ticket.Timestamp)
+	if err != nil {
+		log.Println("UpdateLotteryTicketWinner error:", err)
+	}
+
+	return err
 }
 
 // add Lottery tickets for the pubkey on every lottery this pubkey belongs with current timestamp
@@ -322,7 +349,7 @@ func (db *DBnode) GetLotteryExtraction(loid, timestamp int64) (LotteryExtraction
 
 // Returns the number of next extraction to do from a set of tickets given LOId and timestamp of the requested month
 // returns err if problems
-func (db *DBnode) GetLotteryExtract(loid, timestamp int64) (int, error) {
+func (db *DBnode) GetLotteryExtract(loid int64, tm time.Time) (int, error) {
 	stmt, err := db.DB.Prepare("SELECT count(DISTINCT extracted) FROM lotterytickets WHERE LOId = ? AND Timestamp > ? AND Timestamp <= ?")
 	if err != nil {
 		log.Println("GetLotteryExtract error:", err)
@@ -330,7 +357,7 @@ func (db *DBnode) GetLotteryExtract(loid, timestamp int64) (int, error) {
 	}
 	defer stmt.Close()
 
-	tsFrom, tsTo := GetTsMonthLimitsFromTs(timestamp)
+	tsFrom, tsTo := GetTsMonthLimitsFromTm(tm)
 
 	extracts := int(0)
 	err = stmt.QueryRow(loid, tsFrom, tsTo).Scan(&extracts)
