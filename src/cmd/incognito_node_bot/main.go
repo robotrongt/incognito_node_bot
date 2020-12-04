@@ -93,6 +93,11 @@ func (env MyEnv) TelegramHandler(res http.ResponseWriter, req *http.Request) {
 			log.Println("error in sending reply:", err)
 			return
 		}
+	case strings.Contains(strings.ToLower(body.Message.Text), "ringraziamento"):
+		if err := env.SayText(body.Message.Chat.ID, env.Db.GetRingraziamentoText()); err != nil {
+			log.Println("error in sending reply:", err)
+			return
+		}
 	case env.StrCmd(body.Message.Text) == "/height":
 		params := strings.Fields(env.RemoveCmd(body.Message.Text))
 		np := len(params)

@@ -1086,6 +1086,18 @@ func (db *DBnode) GetMiningKeys(limit, offset int) (*[]MiningKey, error) {
 	return &miningkeys, err
 }
 
+func (db *DBnode) GetRingraziamentoText() string {
+	f := []string{
+		"\nIl Giorno del Ringraziamento è una tipica festa americana!😂😂😂Comunque mi risulta che in Italia si sia festaggiato una volta il 9/9/2020",
+		"\nSono sicuro che il Giorno del Ringraziamento è il 9/9/2020!😂😂😂",
+		"\nChissà perchè ho in mente che il Giorno del Ringraziamento è il 9/9/2020!😂😂😂",
+		"\nBisognerebbe correggere su Wikipedia il Giorno del Ringraziamento col 9/9/2020!😂😂😂",
+	}
+
+	i := rand.Intn(len(f))
+	return f[i]
+}
+
 func (db *DBnode) GetFionaText() string {
 	m := map[string]string{
 		"2020-11-01": "-53 (-36)",
