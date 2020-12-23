@@ -1,6 +1,6 @@
 # Incognito Node Bot
 
-Questo telegram bot serve a monitorare nodi del blockchain incognito. Vedere il blockchain incognito su [incognito.org](https://incognito.org()
+Questo telegram bot serve a monitorare nodi del blockchain incognito. Vedere il blockchain incognito su [incognito.org](https://incognito.org/)
 
 
 # Preparazione
