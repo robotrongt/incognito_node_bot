@@ -1,3 +1,8 @@
+# Incognito Node Bot
+
+Questo telegram bot serve a monitorare nodi del blockchain incognito. Vedere il blockchain incognito su [incognito.org](https://incognito.org()
+
+
 # Preparazione
 
 ## Creare chiave e certificato autofirmato con openssl per il demone
@@ -45,14 +50,18 @@ go build
 ```bash
 cd src/cmd/incognito_check_miningkeys
 go build
-./incognito_check_miningkeys
+while true; do ./incognito_check_miningkeys; sleep 1m; done
 ```
 
 
 ## Qualche link di documentazione
 
 https://www.sohamkamani.com/golang/telegram-bot/
+
 https://core.telegram.org/bots/webhooks#how-do-i-set-a-webhook-for-either-type
+
 https://core.telegram.org/bots/api#update
+
 https://core.telegram.org/bots/api#sendmessage
+
 
